@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import '../styles/Products.css';
@@ -49,21 +49,16 @@ const Products = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCategories();
-    fetchProducts();
-  }, [selectedCategory, searchTerm]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/categories');
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-  };
+  }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       let params = {};
@@ -77,7 +72,12 @@ const Products = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, searchTerm]);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+  }, [fetchCategories, fetchProducts]);
 
   const handleAddToCart = (product) => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');

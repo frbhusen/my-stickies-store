@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import '../styles/AdminDashboard.css';
@@ -15,7 +15,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -37,18 +36,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, [isAuthenticated, navigate]);
 
-  useEffect(() => {
-    if (activeTab === 'products') {
-      fetchProducts();
-      fetchCategories();
-    } else if (activeTab === 'categories') {
-      fetchCategories();
-    } else if (activeTab === 'orders') {
-      fetchOrders();
-    }
-  }, [activeTab]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/products');
@@ -62,18 +50,18 @@ const AdminDashboard = ({ isAuthenticated }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/categories');
       setCategories(response.data);
     } catch (error) {
       alert('Error fetching categories');
     }
-  };
+  }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/orders');
@@ -83,7 +71,18 @@ const AdminDashboard = ({ isAuthenticated }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'products') {
+      fetchProducts();
+      fetchCategories();
+    } else if (activeTab === 'categories') {
+      fetchCategories();
+    } else if (activeTab === 'orders') {
+      fetchOrders();
+    }
+  }, [activeTab, fetchCategories, fetchOrders, fetchProducts]);
 
   const handleAddProduct = () => {
     setEditingProduct(null);
