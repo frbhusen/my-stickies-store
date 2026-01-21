@@ -1,3 +1,13 @@
+// Optional kill-switch for environments where Chromium cannot run (e.g., headless hosts without Chrome)
+if (process.env.DISABLE_WHATSAPP === '1') {
+  module.exports = {
+    isReady: () => false,
+    sendWhatsApp: async () => null,
+    sendOrderWhatsapps: async () => null
+  };
+  return;
+}
+
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const puppeteer = require('puppeteer');
