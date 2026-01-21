@@ -1,0 +1,57 @@
+{
+  "header": {
+    "logo": "🎨 My Stickies",
+    "home": "Home",
+    "products": "Products",
+    "cart": "Cart",
+    "admin": "Admin",
+    "language": "العربية"
+  },
+  "home": {
+    "welcome": "Welcome to My Stickies",
+    "subtitle": "Your favorite place for stickers, posters, and brooches",
+    "description": "Discover unique and colorful stickers, beautiful posters, and stylish brooches to express your personality.",
+    "shopNow": "Shop Now",
+    "whyTitle": "Why Choose Us?",
+    "fastDelivery": "Fast Delivery",
+    "highQuality": "High Quality",
+    "greatSelection": "Great Selection",
+    "support": "Customer Support",
+    "ctaTitle": "Ready to Add Some Color to Your Life?",
+    "explore": "Explore Products"
+  },
+  "products": {
+    "ourProducts": "Our Products",
+    "noProducts": "No products found",
+    "added": "added to cart!",
+    "addToCart": "Add to Cart",
+    "title": "Our Products",
+    "searchPlaceholder": "Search products...",
+    "allCategories": "All Categories",
+    "loading": "Loading products...",
+    "originalPrice": "Original",
+    "finalPrice": "Price"
+  },
+  "cart": {
+    "title": "Shopping Cart",
+    "empty": "Your cart is empty",
+    "emptyHelp": "Start adding products to your cart!",
+    "itemsTitle": "Cart Items",
+    "summaryTitle": "Order Summary",
+    "subtotal": "Subtotal:",
+    "shipping": "Shipping:",
+    "free": "Free",
+    "total": "Total:",
+    "checkoutTitle": "Checkout",
+    "fullName": "Full Name",
+    "phoneNumber": "Phone Number",
+    "city": "City",
+    "emailOptional": "Email (Optional)",
+    "placingOrder": "Placing Order...",
+    "placeOrder": "Place Order",
+    "successTitle": "Order Placed Successfully!",
+    "successThanks": "Thank you for your order. We will contact you soon to confirm.",
+    "successCheckEmail": "Check your email for order confirmation.",
+    "remove": "Remove"
+  }
+}

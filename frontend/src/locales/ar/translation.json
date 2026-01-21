@@ -1,0 +1,57 @@
+{
+  "header": {
+    "logo": " My Stickies",
+    "home": "الرئيسية",
+    "products": "المنتجات",
+    "cart": "عربة التسوق",
+    "admin": "لوحة الإدارة",
+    "language": "English"
+  },
+  "home": {
+    "welcome": "مرحبًا بك في My Stickies",
+    "subtitle": "وجهتك المفضلة للملصقات، الملصقات الجدارية، والبروشات",
+    "description": "اكتشف ملصقات فريدة وملونة، ملصقات جدارية جميلة، وبروشات أنيقة لتعبّر عن شخصيتك.",
+    "shopNow": "تسوق الآن",
+    "whyTitle": "لماذا تختارنا؟",
+    "fastDelivery": "توصيل سريع",
+    "highQuality": "جودة عالية",
+    "greatSelection": "تنوع رائع",
+    "support": "دعم العملاء",
+    "ctaTitle": "هل تريد إضافة بعض الألوان لحياتك؟",
+    "explore": "استعرض المنتجات"
+  },
+  "products": {
+    "ourProducts": "منتجاتنا",
+    "noProducts": "لا توجد منتجات",
+    "added": "أضيفت إلى السلة!",
+    "addToCart": "أضف إلى السلة",
+    "title": "منتجاتنا",
+    "searchPlaceholder": "ابحث عن المنتجات...",
+    "allCategories": "جميع الأقسام",
+    "loading": "جاري تحميل المنتجات...",
+    "originalPrice": "السعر الأصلي",
+    "finalPrice": "السعر"
+  },
+  "cart": {
+    "title": "عربة التسوق",
+    "empty": "سلة التسوق فارغة",
+    "emptyHelp": "ابدأ بإضافة المنتجات إلى سلة التسوق!",
+    "itemsTitle": "عناصر السلة",
+    "summaryTitle": "ملخص الطلب",
+    "subtotal": "المجموع الجزئي:",
+    "shipping": "الشحن:",
+    "free": "مجاني",
+    "total": "الإجمالي:",
+    "checkoutTitle": "إنهاء الطلب",
+    "fullName": "الاسم الكامل",
+    "phoneNumber": "رقم الهاتف",
+    "city": "المدينة",
+    "emailOptional": "البريد الإلكتروني (اختياري)",
+    "placingOrder": "جارٍ إرسال الطلب...",
+    "placeOrder": "إرسال الطلب",
+    "successTitle": "تم تقديم الطلب بنجاح!",
+    "successThanks": "شكرًا لطلبك. سنتواصل معك قريبًا لتأكيد الطلب.",
+    "successCheckEmail": "تحقق من بريدك الإلكتروني لتأكيد الطلب.",
+    "remove": "حذف"
+  }
+}

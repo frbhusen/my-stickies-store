@@ -1,0 +1,25 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+frontend/build/
+backend/dist/
+coverage/
+
+# Env/secrets
+.env
+.env.*
+backend/.env
+frontend/.env
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# WhatsApp Web.js session cache
+backend/.wwebjs_auth/
+backend/.wwebjs_cache/
