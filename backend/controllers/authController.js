@@ -4,6 +4,9 @@ const bcrypt = require('bcryptjs');
 
 exports.register = async (req, res) => {
   try {
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT secret not set' });
+    }
     const { username, email, password, confirmPassword } = req.body;
 
     if (password !== confirmPassword) {
@@ -42,6 +45,9 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT secret not set' });
+    }
     const { email, password } = req.body;
 
     const admin = await Admin.findOne({ email });
