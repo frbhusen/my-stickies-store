@@ -39,6 +39,11 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running', health: '/api/health' });
 });
 
+// API root helper
+app.get('/api', (req, res) => {
+  res.json({ status: 'ok', message: 'API root', health: '/api/health' });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running' });
