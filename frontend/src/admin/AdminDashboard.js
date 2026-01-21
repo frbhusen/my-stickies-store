@@ -27,7 +27,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const [categoryForm, setCategoryForm] = useState({
     name: '',
-    description: ''
+    description: '',
+    defaultPrice: '',
+    defaultDiscount: '',
+    applyDefaultsToProducts: false
   });
 
   useEffect(() => {
@@ -72,6 +75,23 @@ const AdminDashboard = ({ isAuthenticated }) => {
       setLoading(false);
     }
   }, []);
+
+  const applyCategoryDefaultsToProduct = useCallback((categoryId, form) => {
+    const cat = categories.find(c => c._id === categoryId);
+    if (!cat) return form;
+    const updated = { ...form };
+    if (!updated.price && cat.defaultPrice !== undefined && cat.defaultPrice !== null) {
+      updated.price = cat.defaultPrice;
+    }
+    if ((updated.discount === '' || updated.discount === null || typeof updated.discount === 'undefined')
+      && typeof cat.defaultDiscount !== 'undefined' && cat.defaultDiscount !== null) {
+      updated.discount = cat.defaultDiscount;
+    }
+    if (!updated.description && cat.description) {
+      updated.description = cat.description;
+    }
+    return updated;
+  }, [categories]);
 
   useEffect(() => {
     if (activeTab === 'products') {
@@ -142,7 +162,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '' });
+    setCategoryForm({ name: '', description: '', defaultPrice: '', defaultDiscount: '', applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
@@ -150,7 +170,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
     setEditingCategory(category);
     setCategoryForm({
       name: category.name,
-      description: category.description || ''
+      description: category.description || '',
+      defaultPrice: category.defaultPrice ?? '',
+      defaultDiscount: category.defaultDiscount ?? '',
+      applyDefaultsToProducts: false
     });
     setShowCategoryForm(true);
   };
@@ -444,7 +467,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   <textarea
                     value={productForm.description}
                     onChange={(e) => setProductForm({...productForm, description: e.target.value})}
-                    required
                   />
                 </div>
                 <div className="form-row">
@@ -455,7 +477,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
                       step="0.01"
                       value={productForm.price}
                       onChange={(e) => setProductForm({...productForm, price: e.target.value})}
-                      required
                     />
                   </div>
                   <div className="form-group">
@@ -482,7 +503,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   <label>Category</label>
                   <select
                     value={productForm.category}
-                    onChange={(e) => setProductForm({...productForm, category: e.target.value})}
+                    onChange={(e) => setProductForm(applyCategoryDefaultsToProduct(e.target.value, {...productForm, category: e.target.value}))}
                     required
                   >
                     <option value="">Select Category</option>
@@ -526,7 +547,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                       <tr key={product._id}>
                         <td><img src={imgSrc} alt={product.name} className="table-image" /></td>
                         <td>{product.name}</td>
-                        <td>SYP {product.price.toFixed(2)}</td>
+                        <td>SYP {Number(product.price || 0).toFixed(2)}</td>
                         <td>{product.discount}%</td>
                         <td>{product.category?.name}</td>
                         <td>
@@ -576,12 +597,44 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Description</label>
+                  <label>Category Description (applied to products)</label>
                   <textarea
                     value={categoryForm.description}
                     onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
                   />
                 </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Category Price (optional)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={categoryForm.defaultPrice}
+                      onChange={(e) => setCategoryForm({...categoryForm, defaultPrice: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Category Discount (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={categoryForm.defaultDiscount}
+                      onChange={(e) => setCategoryForm({...categoryForm, defaultDiscount: e.target.value})}
+                    />
+                  </div>
+                </div>
+                {editingCategory && (
+                  <div className="form-group checkbox-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={categoryForm.applyDefaultsToProducts}
+                        onChange={(e) => setCategoryForm({...categoryForm, applyDefaultsToProducts: e.target.checked})}
+                      />
+                      Apply these values to all products in this category now
+                    </label>
+                  </div>
+                )}
                 <div className="form-buttons">
                   <button type="submit" className="btn-primary">Save</button>
                   <button
@@ -600,6 +653,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 <div key={category._id} className="category-card">
                   <h3>{category.name}</h3>
                   <p>{category.description}</p>
+                  <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
+                  <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
                   <div className="card-actions">
                     <button
                       className="btn-edit"

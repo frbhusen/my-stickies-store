@@ -10,6 +10,13 @@ const categorySchema = new mongoose.Schema({
   description: {
     type: String
   },
+  defaultPrice: {
+    type: Number
+  },
+  defaultDiscount: {
+    type: Number,
+    default: 0
+  },
   slug: {
     type: String,
     unique: true,

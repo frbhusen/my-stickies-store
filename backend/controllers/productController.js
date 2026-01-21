@@ -42,12 +42,24 @@ exports.getProductById = async (req, res) => {
 exports.createProduct = async (req, res) => {
   try {
     const { name, description, price, discount, image, category } = req.body;
+    const categoryDoc = await Category.findById(category);
+    if (!categoryDoc) {
+      return res.status(400).json({ message: 'Invalid category' });
+    }
+
+    const resolvedPrice = typeof price !== 'undefined' && price !== '' ? Number(price) : categoryDoc.defaultPrice;
+    const resolvedDiscount = typeof discount !== 'undefined' && discount !== '' ? Number(discount) : (categoryDoc.defaultDiscount || 0);
+    const resolvedDescription = description && description.trim().length > 0 ? description : (categoryDoc.description || '');
+
+    if (typeof resolvedPrice === 'undefined' || resolvedPrice === null || resolvedPrice === '') {
+      return res.status(400).json({ message: 'Price is required (set on product or category)' });
+    }
 
     const product = new Product({
       name,
-      description,
-      price,
-      discount,
+      description: resolvedDescription,
+      price: resolvedPrice,
+      discount: resolvedDiscount,
       image,
       category
     });
@@ -65,9 +77,32 @@ exports.updateProduct = async (req, res) => {
   try {
     const { name, description, price, discount, image, category, active } = req.body;
 
+    const update = { updatedAt: Date.now() };
+    if (typeof name !== 'undefined') update.name = name;
+    if (typeof description !== 'undefined') update.description = description;
+    if (typeof price !== 'undefined') update.price = Number(price);
+    if (typeof discount !== 'undefined') update.discount = Number(discount);
+    if (typeof image !== 'undefined') update.image = image;
+    if (typeof category !== 'undefined') update.category = category;
+    if (typeof active !== 'undefined') update.active = active;
+
+    // If price/description are not provided but category has defaults, fill them
+    if ((typeof update.price === 'undefined' || update.price === '') && category) {
+      const categoryDoc = await Category.findById(category);
+      if (categoryDoc && typeof categoryDoc.defaultPrice !== 'undefined') {
+        update.price = categoryDoc.defaultPrice;
+      }
+      if (categoryDoc && typeof categoryDoc.defaultDiscount !== 'undefined' && typeof update.discount === 'undefined') {
+        update.discount = categoryDoc.defaultDiscount;
+      }
+      if (categoryDoc && typeof update.description === 'undefined' && categoryDoc.description) {
+        update.description = categoryDoc.description;
+      }
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, description, price, discount, image, category, active, updatedAt: Date.now() },
+      update,
       { new: true }
     ).populate('category');
 

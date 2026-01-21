@@ -1,4 +1,5 @@
 const Category = require('../models/Category');
+const Product = require('../models/Product');
 
 exports.getAllCategories = async (req, res) => {
   try {
@@ -11,10 +12,16 @@ exports.getAllCategories = async (req, res) => {
 
 exports.createCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, defaultPrice, defaultDiscount } = req.body;
     const slug = name.toLowerCase().replace(/\s+/g, '-');
 
-    const category = new Category({ name, description, slug });
+    const category = new Category({
+      name,
+      description,
+      defaultPrice,
+      defaultDiscount,
+      slug
+    });
     await category.save();
 
     res.status(201).json({ message: 'Category created successfully', category });
@@ -25,17 +32,29 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, defaultPrice, defaultDiscount, applyDefaultsToProducts } = req.body;
     const slug = name.toLowerCase().replace(/\s+/g, '-');
 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
-      { name, description, slug },
+      { name, description, defaultPrice, defaultDiscount, slug },
       { new: true }
     );
 
     if (!category) {
       return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Optionally propagate defaults to all products in this category
+    if (applyDefaultsToProducts && category) {
+      const update = {};
+      if (typeof defaultPrice !== 'undefined') update.price = defaultPrice;
+      if (typeof defaultDiscount !== 'undefined') update.discount = defaultDiscount;
+      if (typeof description !== 'undefined') update.description = description;
+      if (Object.keys(update).length > 0) {
+        update.updatedAt = Date.now();
+        await Product.updateMany({ category: category._id }, update);
+      }
     }
 
     res.json({ message: 'Category updated successfully', category });
