@@ -39,7 +39,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running' });
 });
 
-const PORT = process.env.PORT || 5000;
+// Default to 8000 to align with hosts that fix health checks to that port (e.g., Koyeb)
+const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
