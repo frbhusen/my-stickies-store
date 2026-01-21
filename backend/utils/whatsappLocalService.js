@@ -1,10 +1,14 @@
-// Optional kill-switch for environments where Chromium cannot run (e.g., headless hosts without Chrome)
-if (process.env.DISABLE_WHATSAPP === '1') {
+// Default disabled: only enable WhatsApp when explicitly requested.
+// This avoids Puppeteer/Chrome crashes on hosts without Chromium (e.g., Koyeb free tier).
+const whatsappEnabled = process.env.ENABLE_WHATSAPP === '1' && process.env.DISABLE_WHATSAPP !== '1';
+
+if (!whatsappEnabled) {
   module.exports = {
     isReady: () => false,
     sendWhatsApp: async () => null,
     sendOrderWhatsapps: async () => null
   };
+  console.log('WhatsApp integration is disabled (set ENABLE_WHATSAPP=1 to enable)');
   return;
 }
 
