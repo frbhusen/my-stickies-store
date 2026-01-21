@@ -20,20 +20,27 @@ const Products = () => {
     return fileMatch?.[1] || openMatch?.[1] || ucMatch?.[1] || '';
   };
 
+  const placeholder = 'https://via.placeholder.com/400x300?text=Image+Unavailable';
+
   const primaryImageUrl = (url) => {
-    const id = extractDriveId(url);
-    if (!id) return (url || '').trim();
+    const trimmed = (url || '').trim();
+    if (!trimmed) return placeholder;
+    const id = extractDriveId(trimmed);
+    if (!id) return trimmed;
     return `https://drive.google.com/uc?export=view&id=${id}`;
   };
 
   const driveFallbacks = (url) => {
-    const id = extractDriveId(url);
-    if (!id) return [(url || '').trim()];
+    const trimmed = (url || '').trim();
+    if (!trimmed) return [placeholder];
+    const id = extractDriveId(trimmed);
+    if (!id) return [trimmed, placeholder];
     return [
       `https://drive.google.com/uc?export=view&id=${id}`,
       `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
       `https://drive.google.com/uc?export=download&id=${id}`,
-      `https://lh3.googleusercontent.com/d/${id}=s1000`
+      `https://lh3.googleusercontent.com/d/${id}=s1000`,
+      placeholder
     ];
   };
 
