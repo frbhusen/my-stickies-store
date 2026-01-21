@@ -1,12 +1,17 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const puppeteer = require('puppeteer');
 
 // Uses LocalAuth to persist session in .wwebjs_auth directory
 // Client ID can be configured via env var WHATSAPP_CLIENT_ID to allow multiple independent sessions.
 const whatsappClientId = process.env.WHATSAPP_CLIENT_ID || 'my-stickies';
 const client = new Client({
   authStrategy: new LocalAuth({ clientId: whatsappClientId }),
-  puppeteer: { headless: true }
+  puppeteer: {
+    headless: true,
+    executablePath: puppeteer.executablePath(),
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  }
 });
 
 let ready = false;
