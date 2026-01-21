@@ -34,6 +34,11 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/orders', require('./routes/orders'));
 
+// Root endpoint for quick uptime checks
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Backend is running', health: '/api/health' });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running' });
