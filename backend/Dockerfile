@@ -1,18 +1,8 @@
-# Dockerfile for My Stickies Backend
-
-FROM node:18-alpine
-
+FROM node:20-slim
 WORKDIR /app
-
-# Copy package.json and install dependencies
-COPY package.json package-lock.json ./
-RUN npm install
-
-# Copy application code
+COPY package*.json ./
+RUN npm ci --production
 COPY . .
-
-# Expose port
-EXPOSE 5000
-
-# Start the application
-CMD ["node", "server.js"]
+ENV NODE_ENV=production
+EXPOSE 8000
+CMD ["node","server.js"]

@@ -37,8 +37,6 @@ const Products = () => {
     return '';
   };
 
-  const placeholder = 'https://via.placeholder.com/400x300?text=Image+Unavailable';
-
   const fallbackDriveId = process.env.REACT_APP_FALLBACK_DRIVE_ID || '';
 
   const primaryImageUrl = (url) => {
