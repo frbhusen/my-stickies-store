@@ -14,33 +14,51 @@ const Products = () => {
   const extractDriveId = (url) => {
     if (!url) return '';
     const trimmed = url.trim();
-    const fileMatch = trimmed.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/]+)\//);
-    const openMatch = trimmed.match(/https?:\/\/drive\.google\.com\/open\?id=([^&]+)/);
-    const ucMatch = trimmed.match(/https?:\/\/drive\.google\.com\/uc\?id=([^&]+)/);
-    return fileMatch?.[1] || openMatch?.[1] || ucMatch?.[1] || '';
+    try {
+      const u = new URL(trimmed);
+      if (u.hostname.includes('drive.google.com')) {
+        // Prefer explicit id param anywhere in query
+        const idParam = u.searchParams.get('id');
+        if (idParam) return idParam;
+        // Fallback to /file/d/<id>/ path
+        const fileMatch = trimmed.match(/\/file\/d\/([^/]+)/);
+        if (fileMatch && fileMatch[1]) return fileMatch[1];
+      } else if (u.hostname.includes('lh3.googleusercontent.com')) {
+        const lhMatch = trimmed.match(/\/d\/([^=]+)/);
+        if (lhMatch && lhMatch[1]) return lhMatch[1];
+      }
+    } catch (_) {
+      // Non-URL string: try regex patterns
+      const fileMatch = trimmed.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/]+)\//);
+      const idParamMatch = trimmed.match(/id=([^&]+)/);
+      if (fileMatch?.[1]) return fileMatch[1];
+      if (idParamMatch?.[1]) return idParamMatch[1];
+    }
+    return '';
   };
 
   const placeholder = 'https://via.placeholder.com/400x300?text=Image+Unavailable';
 
+  const fallbackDriveId = process.env.REACT_APP_FALLBACK_DRIVE_ID || '';
+
   const primaryImageUrl = (url) => {
     const trimmed = (url || '').trim();
-    if (!trimmed) return placeholder;
     const id = extractDriveId(trimmed);
-    if (!id) return trimmed;
-    return `https://drive.google.com/uc?export=view&id=${id}`;
+    if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
+    if (trimmed) return trimmed;
+    if (fallbackDriveId) return `https://drive.google.com/uc?export=view&id=${fallbackDriveId}`;
+    return 'https://via.placeholder.com/400x300?text=Image+Unavailable';
   };
 
   const driveFallbacks = (url) => {
     const trimmed = (url || '').trim();
-    if (!trimmed) return [placeholder];
-    const id = extractDriveId(trimmed);
-    if (!id) return [trimmed, placeholder];
+    const id = extractDriveId(trimmed) || (fallbackDriveId ? fallbackDriveId : '');
+    if (!id) return [trimmed || 'https://via.placeholder.com/400x300?text=Image+Unavailable'];
     return [
       `https://drive.google.com/uc?export=view&id=${id}`,
       `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
       `https://drive.google.com/uc?export=download&id=${id}`,
-      `https://lh3.googleusercontent.com/d/${id}=s1000`,
-      placeholder
+      `https://lh3.googleusercontent.com/d/${id}=s1000`
     ];
   };
 

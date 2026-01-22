@@ -58,12 +58,13 @@
   box-shadow: 0 12px 28px rgba(4, 125, 203, 0.2);
 }
 
+
 .product-image-wrapper {
   position: relative;
   overflow: hidden;
   aspect-ratio: 39 / 55;
   max-height: 480px;
-  background: linear-gradient(135deg, var(--color-light) 0%, var(--color-medium) 100%);
+  background: #f7f7f7; /* neutral background so broken images don’t show blue */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,7 +76,7 @@
   height: 100%;
   object-fit: contain;
   transition: transform 0.3s ease;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #fff;
 }
 
 .product-card:hover .product-image {

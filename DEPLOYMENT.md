@@ -60,7 +60,7 @@ Note: Free services sleep after inactivity; first request is slower (cold start)
    - Output Directory: `build`
 3. Add Environment Variable:
    - `REACT_APP_API_URL` = your Render backend URL (e.g., `https://mystickies-api.onrender.com`)
-4. Deploy. Vercel gives a URL like `https://my-stickies-store.vercel.app`.
+4. Deploy. Vercel gives a URL like `https://my0stickies.vercel.app`.
 
 ---
 
@@ -71,7 +71,7 @@ In your backend, ensure CORS allows the Vercel domain and localhost during dev. 
 import cors from 'cors';
 const allowed = [
   'http://localhost:3000',
-  'https://my-stickies-store.vercel.app'
+  'https://my0stickies.vercel.app'
 ];
 app.use(cors({ origin: allowed, credentials: true }));
 ```
