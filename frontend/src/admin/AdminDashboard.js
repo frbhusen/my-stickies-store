@@ -461,17 +461,42 @@ const AdminDashboard = ({ isAuthenticated }) => {
   };
 
   // Convert Google Drive share links to direct viewable URLs
+  const extractDriveId = (url) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    const fileMatch = trimmed.match(/\/file\/d\/([^/]+)/);
+    const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
+    return fileMatch?.[1] || idParamMatch?.[1] || '';
+  };
+
   const normalizeImageUrl = (url) => {
     if (!url) return '';
     const trimmed = url.trim();
+    const id = extractDriveId(trimmed);
+    if (id) return `https://lh3.googleusercontent.com/d/${id}=s400`;
+    return trimmed;
+  };
 
-    // Patterns: file/d/<id>/view..., open?id=<id>, uc?id=<id>
-    const fileMatch = trimmed.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/]+)\//);
-    const openMatch = trimmed.match(/https?:\/\/drive\.google\.com\/open\?id=([^&]+)/);
-    const ucMatch = trimmed.match(/https?:\/\/drive\.google\.com\/uc\?id=([^&]+)/);
-    const id = fileMatch?.[1] || openMatch?.[1] || ucMatch?.[1];
-
-    return id ? `https://drive.google.com/uc?export=view&id=${id}` : trimmed;
+  const handleTableImageError = (e, url) => {
+    const id = extractDriveId(url);
+    if (!id) {
+      e.target.src = logo;
+      return;
+    }
+    
+    const fallbacks = [
+      `https://lh3.googleusercontent.com/d/${id}=s400`,
+      `https://drive.google.com/thumbnail?id=${id}&sz=w400`,
+      `https://drive.google.com/uc?export=view&id=${id}`,
+      logo
+    ];
+    
+    const idx = Number(e.target.getAttribute('data-fallback-idx') || 0);
+    const next = idx + 1;
+    if (next < fallbacks.length) {
+      e.target.setAttribute('data-fallback-idx', next);
+      e.target.src = fallbacks[next];
+    }
   };
 
   return (
@@ -657,7 +682,15 @@ const AdminDashboard = ({ isAuthenticated }) => {
                       const imgSrc = normalizeImageUrl(product.image) || logo;
                       return (
                       <tr key={product._id}>
-                        <td><img src={imgSrc} alt={product.name} className="table-image" /></td>
+                        <td>
+                          <img 
+                            src={imgSrc} 
+                            alt={product.name} 
+                            className="table-image"
+                            onError={(e) => handleTableImageError(e, product.image)}
+                            data-fallback-idx="0"
+                          />
+                        </td>
                         <td>{product.name}</td>
                         <td>SYP {Number(product.price || 0).toFixed(2)}</td>
                         <td>{product.discount}%</td>
