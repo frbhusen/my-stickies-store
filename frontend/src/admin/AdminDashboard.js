@@ -4,6 +4,23 @@ import api from '../utils/api';
 import '../styles/AdminDashboard.css';
 import logo from '../assets/logo.png';
 
+// Utility functions for image URL processing
+const extractDriveId = (url) => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  const fileMatch = trimmed.match(/\/file\/d\/([^/]+)/);
+  const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
+  return fileMatch?.[1] || idParamMatch?.[1] || '';
+};
+
+const normalizeImageUrl = (url) => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  const id = extractDriveId(trimmed);
+  if (id) return `https://lh3.googleusercontent.com/d/${id}=s400`;
+  return trimmed;
+};
+
 const AdminDashboard = ({ isAuthenticated }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('products');
@@ -461,22 +478,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
   };
 
   // Convert Google Drive share links to direct viewable URLs
-  const extractDriveId = (url) => {
-    if (!url) return '';
-    const trimmed = url.trim();
-    const fileMatch = trimmed.match(/\/file\/d\/([^/]+)/);
-    const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
-    return fileMatch?.[1] || idParamMatch?.[1] || '';
-  };
-
-  const normalizeImageUrl = (url) => {
-    if (!url) return '';
-    const trimmed = url.trim();
-    const id = extractDriveId(trimmed);
-    if (id) return `https://lh3.googleusercontent.com/d/${id}=s400`;
-    return trimmed;
-  };
-
   const handleTableImageError = (e, url) => {
     const id = extractDriveId(url);
     if (!id) {
