@@ -79,48 +79,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, []);
 
-  const extractFilenameFromDriveUrl = (url) => {
-    if (!url || typeof url !== 'string') return '';
-    const trimmed = url.trim();
-    
-    // Try to extract from various Google Drive URL formats
-    // Format: https://drive.google.com/file/d/FILE_ID/view?usp=whatever
-    // The filename may be in the URL parameters or we extract from ID
-    
-    // Look for a filename in query params
-    try {
-      const urlObj = new URL(trimmed);
-      const params = new URLSearchParams(urlObj.search);
-      if (params.has('name')) return params.get('name');
-    } catch (e) { /* not a valid URL, continue */ }
-    
-    // If no filename param, extract Drive ID and use as base
-    const fileMatch = trimmed.match(/\/file\/d\/([^/]+)/);
-    const openMatch = trimmed.match(/[?&]id=([^&]+)/);
-    const id = fileMatch?.[1] || openMatch?.[1];
-    
-    // Return empty if we can't extract anything useful
-    return id || '';
-  };
-
   const handleImageUrlChange = (url) => {
     const normalized = normalizeImageUrl(url);
-    
-    // Auto-populate name from filename if name is empty
-    if (!productForm.name || productForm.name === '') {
-      const filename = extractFilenameFromDriveUrl(url);
-      if (filename) {
-        // Clean up the filename: remove extension, replace _ and - with spaces, capitalize
-        const cleanName = filename
-          .replace(/\.[^.]+$/, '') // remove extension
-          .replace(/[_-]/g, ' ')    // replace _ and - with spaces
-          .replace(/\b\w/g, l => l.toUpperCase()); // capitalize words
-        
-        setProductForm({...productForm, image: normalized, name: cleanName});
-        return;
-      }
-    }
-    
     setProductForm({...productForm, image: normalized});
   };
 
@@ -196,17 +156,13 @@ const AdminDashboard = ({ isAuthenticated }) => {
     
     try {
       let successCount = 0;
+      let index = 1;
       
       for (const url of urls) {
         const normalized = normalizeImageUrl(url);
-        const filename = extractFilenameFromDriveUrl(url);
-        const cleanName = filename
-          .replace(/\.[^.]+$/, '')
-          .replace(/[_-]/g, ' ')
-          .replace(/\b\w/g, l => l.toUpperCase());
         
         const productData = {
-          name: cleanName || 'Untitled Product',
+          name: `Product ${index}`,
           image: normalized,
           category: batchCategory,
           ...defaults
@@ -214,6 +170,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
         
         await api.post('/products', productData);
         successCount++;
+        index++;
       }
       
       alert(`Successfully added ${successCount} product(s)`);
@@ -587,7 +544,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     value={batchImages}
                     onChange={(e) => setBatchImages(e.target.value)}
                     rows="10"
-                    placeholder="Paste Google Drive image URLs here, one per line:\nhttps://drive.google.com/file/d/.../view\nhttps://drive.google.com/file/d/.../view\n...\n\nProduct names will be extracted from filenames automatically."
+                    placeholder="Paste Google Drive image URLs here, one per line:\nhttps://drive.google.com/file/d/.../view\nhttps://drive.google.com/file/d/.../view\n...\n\nProducts will be named 'Product 1', 'Product 2', etc. You can rename them after creation."
                     required
                     style={{fontFamily: 'monospace', fontSize: '13px'}}
                   />
@@ -650,10 +607,9 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     type="text"
                     value={productForm.image}
                     onChange={(e) => handleImageUrlChange(e.target.value)}
-                    placeholder="Paste Google Drive image URL - product name will auto-fill from filename"
+                    placeholder="Paste Google Drive image URL"
                     required
                   />
-                  <small style={{color: '#666', fontSize: '12px'}}>Product name will be auto-populated from the image filename</small>
                 </div>
                 <div className="form-group">
                   <label>Category</label>
