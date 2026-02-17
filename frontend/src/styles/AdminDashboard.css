@@ -78,6 +78,11 @@
   font-size: 2rem;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
 .btn-primary {
   padding: 0.8rem 1.5rem;
   background: linear-gradient(135deg, var(--color-medium) 0%, var(--color-dark) 100%);

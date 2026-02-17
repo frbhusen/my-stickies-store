@@ -15,6 +15,9 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showBatchForm, setShowBatchForm] = useState(false);
+  const [batchImages, setBatchImages] = useState('');
+  const [batchCategory, setBatchCategory] = useState('');
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -76,6 +79,51 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, []);
 
+  const extractFilenameFromDriveUrl = (url) => {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    
+    // Try to extract from various Google Drive URL formats
+    // Format: https://drive.google.com/file/d/FILE_ID/view?usp=whatever
+    // The filename may be in the URL parameters or we extract from ID
+    
+    // Look for a filename in query params
+    try {
+      const urlObj = new URL(trimmed);
+      const params = new URLSearchParams(urlObj.search);
+      if (params.has('name')) return params.get('name');
+    } catch (e) { /* not a valid URL, continue */ }
+    
+    // If no filename param, extract Drive ID and use as base
+    const fileMatch = trimmed.match(/\/file\/d\/([^\/]+)/);
+    const openMatch = trimmed.match(/[?&]id=([^&]+)/);
+    const id = fileMatch?.[1] || openMatch?.[1];
+    
+    // Return empty if we can't extract anything useful
+    return id || '';
+  };
+
+  const handleImageUrlChange = (url) => {
+    const normalized = normalizeImageUrl(url);
+    
+    // Auto-populate name from filename if name is empty
+    if (!productForm.name || productForm.name === '') {
+      const filename = extractFilenameFromDriveUrl(url);
+      if (filename) {
+        // Clean up the filename: remove extension, replace _ and - with spaces, capitalize
+        const cleanName = filename
+          .replace(/\.[^.]+$/, '') // remove extension
+          .replace(/[_-]/g, ' ')    // replace _ and - with spaces
+          .replace(/\b\w/g, l => l.toUpperCase()); // capitalize words
+        
+        setProductForm({...productForm, image: normalized, name: cleanName});
+        return;
+      }
+    }
+    
+    setProductForm({...productForm, image: normalized});
+  };
+
   const applyCategoryDefaultsToProduct = useCallback((categoryId, form) => {
     const cat = categories.find(c => c._id === categoryId);
     if (!cat) return form;
@@ -115,6 +163,67 @@ const AdminDashboard = ({ isAuthenticated }) => {
       category: ''
     });
     setShowProductForm(true);
+  };
+
+  const handleBatchAdd = () => {
+    setBatchImages('');
+    setBatchCategory('');
+    setShowBatchForm(true);
+  };
+
+  const handleSaveBatchProducts = async (e) => {
+    e.preventDefault();
+    
+    if (!batchCategory) {
+      alert('Please select a category');
+      return;
+    }
+    
+    const urls = batchImages.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+    
+    if (urls.length === 0) {
+      alert('Please enter at least one image URL');
+      return;
+    }
+    
+    // Find category defaults
+    const cat = categories.find(c => c._id === batchCategory);
+    const defaults = {
+      price: cat?.defaultPrice || '',
+      discount: cat?.defaultDiscount || '',
+      description: cat?.description || ''
+    };
+    
+    try {
+      let successCount = 0;
+      
+      for (const url of urls) {
+        const normalized = normalizeImageUrl(url);
+        const filename = extractFilenameFromDriveUrl(url);
+        const cleanName = filename
+          .replace(/\.[^.]+$/, '')
+          .replace(/[_-]/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
+        
+        const productData = {
+          name: cleanName || 'Untitled Product',
+          image: normalized,
+          category: batchCategory,
+          ...defaults
+        };
+        
+        await api.post('/products', productData);
+        successCount++;
+      }
+      
+      alert(`Successfully added ${successCount} product(s)`);
+      setShowBatchForm(false);
+      setBatchImages('');
+      setBatchCategory('');
+      fetchProducts();
+    } catch (error) {
+      alert('Error adding products: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   const handleEditProduct = (product) => {
@@ -445,10 +554,56 @@ const AdminDashboard = ({ isAuthenticated }) => {
           <div className="tab-content">
             <div className="content-header">
               <h2>Products Management</h2>
-              <button className="btn-primary" onClick={handleAddProduct}>
-                + Add Product
-              </button>
+              <div className="header-buttons">
+                <button className="btn-primary" onClick={handleAddProduct}>
+                  + Add Product
+                </button>
+                <button className="btn-secondary" onClick={handleBatchAdd}>
+                  📦 Batch Add
+                </button>
+              </div>
             </div>
+
+            {showBatchForm && (
+              <form className="form-card" onSubmit={handleSaveBatchProducts}>
+                <h3>Batch Add Products</h3>
+                <div className="form-group">
+                  <label>Category</label>
+                  <select
+                    value={batchCategory}
+                    onChange={(e) => setBatchCategory(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map(cat => (
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  <small style={{color: '#666', fontSize: '12px'}}>All products will use this category's default price, discount, and description</small>
+                </div>
+                <div className="form-group">
+                  <label>Image URLs (one per line)</label>
+                  <textarea
+                    value={batchImages}
+                    onChange={(e) => setBatchImages(e.target.value)}
+                    rows="10"
+                    placeholder="Paste Google Drive image URLs here, one per line:\nhttps://drive.google.com/file/d/.../view\nhttps://drive.google.com/file/d/.../view\n...\n\nProduct names will be extracted from filenames automatically."
+                    required
+                    style={{fontFamily: 'monospace', fontSize: '13px'}}
+                  />
+                </div>
+                <div className="form-buttons">
+                  <button type="submit" className="btn-primary">Add All Products</button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setShowBatchForm(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
 
             {showProductForm && (
               <form className="form-card" onSubmit={handleSaveProduct}>
@@ -490,14 +645,15 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Image URL</label>
+                  <label>Image URL (Google Drive)</label>
                   <input
                     type="text"
                     value={productForm.image}
-                    onChange={(e) => setProductForm({...productForm, image: e.target.value})}
-                    onBlur={(e) => setProductForm({...productForm, image: normalizeImageUrl(e.target.value)})}
+                    onChange={(e) => handleImageUrlChange(e.target.value)}
+                    placeholder="Paste Google Drive image URL - product name will auto-fill from filename"
                     required
                   />
+                  <small style={{color: '#666', fontSize: '12px'}}>Product name will be auto-populated from the image filename</small>
                 </div>
                 <div className="form-group">
                   <label>Category</label>
