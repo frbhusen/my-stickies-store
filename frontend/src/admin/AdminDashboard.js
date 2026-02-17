@@ -35,6 +35,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchImages, setBatchImages] = useState('');
   const [batchCategory, setBatchCategory] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState([]);
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -240,6 +241,40 @@ const AdminDashboard = ({ isAuthenticated }) => {
       } catch (error) {
         alert('Error deleting product');
       }
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedProducts.length === 0) {
+      alert('Please select products to delete');
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete ${selectedProducts.length} product(s)?`)) {
+      try {
+        await Promise.all(selectedProducts.map(id => api.delete(`/products/${id}`)));
+        setSelectedProducts([]);
+        fetchProducts();
+        alert(`Successfully deleted ${selectedProducts.length} product(s)`);
+      } catch (error) {
+        alert('Error deleting products: ' + (error.response?.data?.message || error.message));
+      }
+    }
+  };
+
+  const toggleProductSelection = (productId) => {
+    setSelectedProducts(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.length === products.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(products.map(p => p._id));
     }
   };
 
@@ -544,6 +579,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 <button className="btn-secondary" onClick={handleBatchAdd}>
                   📦 Batch Add
                 </button>
+                {selectedProducts.length > 0 && (
+                  <button className="btn-delete" onClick={handleBatchDelete}>
+                    🗑️ Delete Selected ({selectedProducts.length})
+                  </button>
+                )}
               </div>
             </div>
 
@@ -670,6 +710,14 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 <table>
                   <thead>
                     <tr>
+                      <th>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedProducts.length === products.length && products.length > 0}
+                          onChange={toggleSelectAll}
+                          title="Select all"
+                        />
+                      </th>
                       <th>Image</th>
                       <th>Name</th>
                       <th>Price</th>
@@ -681,8 +729,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   <tbody>
                     {products.map(product => {
                       const imgSrc = normalizeImageUrl(product.image) || logo;
+                      const isSelected = selectedProducts.includes(product._id);
                       return (
-                      <tr key={product._id}>
+                      <tr key={product._id} className={isSelected ? 'selected-row' : ''}>
+                        <td>
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={() => toggleProductSelection(product._id)}
+                          />
+                        </td>
                         <td>
                           <img 
                             src={imgSrc} 
