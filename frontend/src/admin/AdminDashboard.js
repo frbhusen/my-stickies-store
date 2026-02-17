@@ -95,7 +95,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
     } catch (e) { /* not a valid URL, continue */ }
     
     // If no filename param, extract Drive ID and use as base
-    const fileMatch = trimmed.match(/\/file\/d\/([^\/]+)/);
+    const fileMatch = trimmed.match(/\/file\/d\/([^/]+)/);
     const openMatch = trimmed.match(/[?&]id=([^&]+)/);
     const id = fileMatch?.[1] || openMatch?.[1];
     
