@@ -55,6 +55,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
     defaultPrice: '',
     type: 'product',
     defaultDiscount: '',
+    parentCategory: '',
     applyDefaultsToProducts: false
   });
 
@@ -304,7 +305,13 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'product', defaultDiscount: '', applyDefaultsToProducts: false });
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'product', defaultDiscount: '', parentCategory: '', applyDefaultsToProducts: false });
+    setShowCategoryForm(true);
+  };
+
+  const handleAddEserviceCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'eservice', defaultDiscount: '', parentCategory: '', applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
@@ -317,6 +324,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       defaultPrice: category.defaultPrice ?? '',
       type: category.type || 'product',
       defaultDiscount: category.defaultDiscount ?? '',
+      parentCategory: category.parentCategory || '',
       applyDefaultsToProducts: false
     });
     setShowCategoryForm(true);
@@ -331,7 +339,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
         await api.post('/categories', categoryForm);
       }
       setShowCategoryForm(false);
-      fetchCategories();
+      const type = activeTab === 'eservices' ? 'eservice' : (activeTab === 'products' ? 'product' : undefined);
+      fetchCategories(type);
     } catch (error) {
       alert('Error saving category');
     }
@@ -341,7 +350,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
       try {
         await api.delete(`/categories/${id}`);
-        fetchCategories();
+        const type = activeTab === 'eservices' ? 'eservice' : (activeTab === 'products' ? 'product' : undefined);
+        fetchCategories(type);
       } catch (error) {
         alert('Error deleting category');
       }
@@ -630,12 +640,115 @@ const AdminDashboard = ({ isAuthenticated }) => {
         >
           <option value="">Select Category</option>
           {categories
-            .filter(cat => !productForm.type || cat.type === productForm.type)
+            .filter(cat => {
+              if (!productForm.type || cat.type !== productForm.type) return false;
+              if (productForm.type === 'eservice') return !!cat.parentCategory;
+              return true;
+            })
             .map(cat => (
             <option key={cat._id} value={cat._id}>{cat.name}</option>
             ))}
         </select>
       </div>
+      <div className="form-buttons">
+        <button type="submit" className="btn-primary">Save</button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+
+  const renderCategoryForm = (onCancel) => (
+    <form className="form-card" onSubmit={handleSaveCategory}>
+      <h3>{editingCategory ? 'Edit Category' : 'Add New Category'}</h3>
+      <div className="form-group">
+        <label>Category Name</label>
+        <input
+          type="text"
+          value={categoryForm.name}
+          onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label>Category Description (applied to products)</label>
+        <textarea
+          value={categoryForm.description}
+          onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
+        />
+      </div>
+      <div className="form-group">
+        <label>Category Type</label>
+        <select
+          value={categoryForm.type}
+          onChange={(e) => setCategoryForm({...categoryForm, type: e.target.value})}
+        >
+          <option value="product">Physical Products</option>
+          <option value="eservice">E-Services</option>
+        </select>
+      </div>
+      {categoryForm.type === 'eservice' && (
+        <div className="form-group">
+          <label>Parent Category (optional)</label>
+          <select
+            value={categoryForm.parentCategory}
+            onChange={(e) => setCategoryForm({...categoryForm, parentCategory: e.target.value})}
+          >
+            <option value="">No parent (top-level)</option>
+            {categories
+              .filter(cat => cat.type === 'eservice' && !cat.parentCategory)
+              .map(cat => (
+                <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+          </select>
+        </div>
+      )}
+      <div className="form-group">
+        <label>Category Image URL (Google Drive)</label>
+        <input
+          type="text"
+          value={categoryForm.image}
+          onChange={(e) => setCategoryForm({...categoryForm, image: e.target.value})}
+          placeholder="Paste Google Drive image URL"
+        />
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Category Price (optional)</label>
+          <input
+            type="number"
+            step="0.01"
+            value={categoryForm.defaultPrice}
+            onChange={(e) => setCategoryForm({...categoryForm, defaultPrice: e.target.value})}
+          />
+        </div>
+        <div className="form-group">
+          <label>Category Discount (%)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={categoryForm.defaultDiscount}
+            onChange={(e) => setCategoryForm({...categoryForm, defaultDiscount: e.target.value})}
+          />
+        </div>
+      </div>
+      {editingCategory && (
+        <div className="form-group checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={categoryForm.applyDefaultsToProducts}
+              onChange={(e) => setCategoryForm({...categoryForm, applyDefaultsToProducts: e.target.checked})}
+            />
+            Apply these values to all products in this category now
+          </label>
+        </div>
+      )}
       <div className="form-buttons">
         <button type="submit" className="btn-primary">Save</button>
         <button
@@ -718,9 +831,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     required
                   >
                     <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
+                    {categories
+                      .filter(cat => !isEservicesTab || (cat.type === 'eservice' && cat.parentCategory))
+                      .map(cat => (
+                        <option key={cat._id} value={cat._id}>{cat.name}</option>
+                      ))}
                   </select>
                   <small style={{color: '#666', fontSize: '12px'}}>All products will use this category's default price, discount, and description</small>
                 </div>
@@ -829,6 +944,45 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 </table>
               </div>
             )}
+
+            {isEservicesTab && (
+              <div className="tab-content" style={{ marginTop: '2rem' }}>
+                <div className="content-header">
+                  <h2>E-Service Categories</h2>
+                  <button className="btn-primary" onClick={handleAddEserviceCategory}>
+                    + Add E-Service Category
+                  </button>
+                </div>
+                {showCategoryForm && renderCategoryForm(() => setShowCategoryForm(false))}
+                <div className="categories-grid">
+                  {categories
+                    .filter(category => category.type === 'eservice')
+                    .map(category => (
+                    <div key={category._id} className="category-card">
+                      <h3>{category.name}</h3>
+                      <p>{category.description}</p>
+                      <p className="meta">Parent: {category.parentCategory ? (categories.find(c => c._id === category.parentCategory)?.name || '—') : '—'}</p>
+                      <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
+                      <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
+                      <div className="card-actions">
+                        <button
+                          className="btn-edit"
+                          onClick={() => handleEditCategory(category)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn-delete"
+                          onClick={() => handleDeleteCategory(category._id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -842,88 +996,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
               </button>
             </div>
 
-            {showCategoryForm && (
-              <form className="form-card" onSubmit={handleSaveCategory}>
-                <h3>{editingCategory ? 'Edit Category' : 'Add New Category'}</h3>
-                <div className="form-group">
-                  <label>Category Name</label>
-                  <input
-                    type="text"
-                    value={categoryForm.name}
-                    onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Category Description (applied to products)</label>
-                  <textarea
-                    value={categoryForm.description}
-                    onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Category Type</label>
-                  <select
-                    value={categoryForm.type}
-                    onChange={(e) => setCategoryForm({...categoryForm, type: e.target.value})}
-                  >
-                    <option value="product">Physical Products</option>
-                    <option value="eservice">E-Services</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Category Image URL (Google Drive)</label>
-                  <input
-                    type="text"
-                    value={categoryForm.image}
-                    onChange={(e) => setCategoryForm({...categoryForm, image: e.target.value})}
-                    placeholder="Paste Google Drive image URL"
-                  />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Category Price (optional)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={categoryForm.defaultPrice}
-                      onChange={(e) => setCategoryForm({...categoryForm, defaultPrice: e.target.value})}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Category Discount (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={categoryForm.defaultDiscount}
-                      onChange={(e) => setCategoryForm({...categoryForm, defaultDiscount: e.target.value})}
-                    />
-                  </div>
-                </div>
-                {editingCategory && (
-                  <div className="form-group checkbox-group">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={categoryForm.applyDefaultsToProducts}
-                        onChange={(e) => setCategoryForm({...categoryForm, applyDefaultsToProducts: e.target.checked})}
-                      />
-                      Apply these values to all products in this category now
-                    </label>
-                  </div>
-                )}
-                <div className="form-buttons">
-                  <button type="submit" className="btn-primary">Save</button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setShowCategoryForm(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
+            {showCategoryForm && renderCategoryForm(() => setShowCategoryForm(false))}
 
             <div className="categories-grid">
               {categories.map(category => (
@@ -931,6 +1004,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   <h3>{category.name}</h3>
                   <p>{category.description}</p>
                   <p className="meta">Type: {category.type === 'eservice' ? 'E-Service' : 'Product'}</p>
+                  <p className="meta">Parent: {category.parentCategory ? (categories.find(c => c._id === category.parentCategory)?.name || '—') : '—'}</p>
                   <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
                   <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
                   <div className="card-actions">
