@@ -762,6 +762,13 @@ const AdminDashboard = ({ isAuthenticated }) => {
     </form>
   );
 
+  const topLevelEserviceCategories = categories.filter(
+    (cat) => cat.type === 'eservice' && !cat.parentCategory
+  );
+  const subEserviceCategories = categories.filter(
+    (cat) => cat.type === 'eservice' && cat.parentCategory
+  );
+
   return (
     <div className="admin-dashboard">
       <aside className="admin-sidebar">
@@ -954,32 +961,66 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   </button>
                 </div>
                 {showCategoryForm && renderCategoryForm(() => setShowCategoryForm(false))}
+                <h3 style={{ marginTop: '1rem' }}>Top-Level Categories</h3>
                 <div className="categories-grid">
-                  {categories
-                    .filter(category => category.type === 'eservice')
-                    .map(category => (
-                    <div key={category._id} className="category-card">
-                      <h3>{category.name}</h3>
-                      <p>{category.description}</p>
-                      <p className="meta">Parent: {category.parentCategory ? (categories.find(c => c._id === category.parentCategory)?.name || '—') : '—'}</p>
-                      <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
-                      <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
-                      <div className="card-actions">
-                        <button
-                          className="btn-edit"
-                          onClick={() => handleEditCategory(category)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn-delete"
-                          onClick={() => handleDeleteCategory(category._id)}
-                        >
-                          Delete
-                        </button>
+                  {topLevelEserviceCategories.length === 0 ? (
+                    <p>No top-level categories yet.</p>
+                  ) : (
+                    topLevelEserviceCategories.map(category => (
+                      <div key={category._id} className="category-card">
+                        <h3>{category.name}</h3>
+                        <p>{category.description}</p>
+                        <p className="meta">Parent: —</p>
+                        <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
+                        <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
+                        <div className="card-actions">
+                          <button
+                            className="btn-edit"
+                            onClick={() => handleEditCategory(category)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn-delete"
+                            onClick={() => handleDeleteCategory(category._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
+                </div>
+
+                <h3 style={{ marginTop: '1.5rem' }}>Sub-Categories</h3>
+                <div className="categories-grid">
+                  {subEserviceCategories.length === 0 ? (
+                    <p>No sub-categories yet.</p>
+                  ) : (
+                    subEserviceCategories.map(category => (
+                      <div key={category._id} className="category-card">
+                        <h3>{category.name}</h3>
+                        <p>{category.description}</p>
+                        <p className="meta">Parent: {categories.find(c => c._id === category.parentCategory)?.name || '—'}</p>
+                        <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
+                        <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
+                        <div className="card-actions">
+                          <button
+                            className="btn-edit"
+                            onClick={() => handleEditCategory(category)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn-delete"
+                            onClick={() => handleDeleteCategory(category._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
