@@ -323,6 +323,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
   };
 
   const handleEditCategory = (category) => {
+    const parentId = category.parentCategory?._id || category.parentCategory || '';
     setEditingCategory(category);
     setCategoryForm({
       name: category.name,
@@ -331,8 +332,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       defaultPrice: category.defaultPrice ?? '',
       type: category.type || 'product',
       defaultDiscount: category.defaultDiscount ?? '',
-      parentCategory: category.parentCategory || '',
-      isSubCategory: !!category.parentCategory,
+      parentCategory: parentId,
+      isSubCategory: !!parentId,
       applyDefaultsToProducts: false
     });
     setShowCategoryForm(true);
@@ -345,10 +346,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
         alert('Please select a parent category for this sub-category.');
         return;
       }
+      const payload = {
+        ...categoryForm,
+        parentCategory: categoryForm.type === 'eservice' && categoryForm.isSubCategory
+          ? categoryForm.parentCategory
+          : null
+      };
       if (editingCategory) {
-        await api.put(`/categories/${editingCategory._id}`, categoryForm);
+        await api.put(`/categories/${editingCategory._id}`, payload);
       } else {
-        await api.post('/categories', categoryForm);
+        await api.post('/categories', payload);
       }
       setShowCategoryForm(false);
       const type = activeTab === 'eservices' ? 'eservice' : (activeTab === 'products' ? 'product' : undefined);
