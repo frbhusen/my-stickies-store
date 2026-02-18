@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import logo from '../assets/logo.png';
 
 const Header = ({ cartCount }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   return (
     <header className="header">
