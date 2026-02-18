@@ -8,6 +8,7 @@ const EServices = () => {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedSubCategory, setSelectedSubCategory] = useState('');
   const [loading, setLoading] = useState(true);
 
   const extractDriveId = (url) => {
@@ -126,9 +127,13 @@ const EServices = () => {
     return primaryImageUrl(image);
   };
 
-  const selectedCategoryData = categories.find(cat => cat.slug === selectedCategory);
-  const filteredServices = selectedCategory
-    ? services.filter(service => service.category?.slug === selectedCategory)
+  const topCategories = categories.filter(cat => !cat.parentCategory);
+  const subCategories = selectedCategory
+    ? categories.filter(cat => cat.parentCategory === selectedCategory)
+    : [];
+  const selectedSubCategoryData = categories.find(cat => cat._id === selectedSubCategory);
+  const filteredServices = selectedSubCategory
+    ? services.filter(service => service.category?._id === selectedSubCategory)
     : [];
 
   return (
@@ -136,38 +141,44 @@ const EServices = () => {
       <div className="eservices-header">
         <h1>{t('eservices.title')}</h1>
         <p className="eservices-subtitle">{t('eservices.subtitle')}</p>
-        {selectedCategory && (
+        {(selectedCategory || selectedSubCategory) && (
           <button
             type="button"
             className="back-to-categories"
-            onClick={() => setSelectedCategory('')}
+            onClick={() => {
+              if (selectedSubCategory) {
+                setSelectedSubCategory('');
+              } else {
+                setSelectedCategory('');
+              }
+            }}
           >
-            {t('eservices.backToCategories')}
+            {selectedSubCategory ? t('eservices.backToSubcategories') : t('eservices.backToCategories')}
           </button>
         )}
       </div>
 
       {loading ? (
         <div className="loading-spinner">{t('eservices.loading')}</div>
-      ) : selectedCategory ? (
+      ) : selectedSubCategory ? (
         filteredServices.length === 0 ? (
           <div className="no-services">{t('eservices.noServices')}</div>
         ) : (
           <div className="category-sections">
             <section className="category-section">
               <div className="category-header">
-                <h2>{selectedCategoryData?.name || ''}</h2>
+                <h2>{selectedSubCategoryData?.name || ''}</h2>
               </div>
               <div className="eservices-grid">
                 {filteredServices.map(service => (
                   <div key={service._id} className="service-card">
                     <div className="service-image-wrapper">
                       <img
-                        src={primaryImageUrl(service.image)}
+                        src={selectedSubCategoryData?.image ? primaryImageUrl(selectedSubCategoryData.image) : primaryImageUrl(service.image)}
                         alt={service.name}
                         className="service-image"
                         data-fallback-idx="0"
-                        onError={(e) => handleImageError(e, service.image)}
+                        onError={(e) => handleImageError(e, selectedSubCategoryData?.image || service.image)}
                       />
                       {service.discount > 0 && (
                         <div className="discount-badge">-{service.discount}%</div>
@@ -199,19 +210,57 @@ const EServices = () => {
             </section>
           </div>
         )
-      ) : categories.length === 0 ? (
+      ) : selectedCategory ? (
+        subCategories.length === 0 ? (
+          <div className="no-services">{t('eservices.noSubcategories')}</div>
+        ) : (
+          <div className="eservice-categories-grid">
+            {subCategories.map(category => {
+              const count = services.filter(service => service.category?._id === category._id).length;
+              const imageUrl = categoryImageUrl(category);
+              return (
+                <button
+                  key={category._id}
+                  type="button"
+                  className="eservice-category-card"
+                  onClick={() => setSelectedSubCategory(category._id)}
+                >
+                  {imageUrl ? (
+                    <div className="category-image-wrapper">
+                      <img
+                        src={imageUrl}
+                        alt={category.name}
+                        className="category-image"
+                        data-fallback-idx="0"
+                        onError={(e) => handleImageError(e, category.image)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="category-icon">{getCategoryIcon(category)}</div>
+                  )}
+                  <h3>{category.name}</h3>
+                  <p className="category-count">{count} {t('eservices.servicesCount')}</p>
+                </button>
+              );
+            })}
+          </div>
+        )
+      ) : topCategories.length === 0 ? (
         <div className="no-services">{t('eservices.noServices')}</div>
       ) : (
         <div className="eservice-categories-grid">
-          {categories.map(category => {
-            const count = services.filter(service => service.category?.slug === category.slug).length;
+          {topCategories.map(category => {
+            const count = categories.filter(cat => cat.parentCategory === category._id).length;
             const imageUrl = categoryImageUrl(category);
             return (
               <button
                 key={category._id}
                 type="button"
                 className="eservice-category-card"
-                onClick={() => setSelectedCategory(category.slug)}
+                onClick={() => {
+                  setSelectedCategory(category._id);
+                  setSelectedSubCategory('');
+                }}
               >
                 {imageUrl ? (
                   <div className="category-image-wrapper">
@@ -227,7 +276,7 @@ const EServices = () => {
                   <div className="category-icon">{getCategoryIcon(category)}</div>
                 )}
                 <h3>{category.name}</h3>
-                <p className="category-count">{count} {t('eservices.servicesCount')}</p>
+                <p className="category-count">{count} {t('eservices.subcategoriesCount')}</p>
               </button>
             );
           })}
