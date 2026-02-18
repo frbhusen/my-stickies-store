@@ -51,6 +51,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     description: '',
+    image: '',
     defaultPrice: '',
     type: 'product',
     defaultDiscount: '',
@@ -303,7 +304,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', defaultPrice: '', type: 'product', defaultDiscount: '', applyDefaultsToProducts: false });
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'product', defaultDiscount: '', applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
@@ -312,6 +313,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
     setCategoryForm({
       name: category.name,
       description: category.description || '',
+      image: category.image || '',
       defaultPrice: category.defaultPrice ?? '',
       type: category.type || 'product',
       defaultDiscount: category.defaultDiscount ?? '',
@@ -868,6 +870,15 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     <option value="product">Physical Products</option>
                     <option value="eservice">E-Services</option>
                   </select>
+                </div>
+                <div className="form-group">
+                  <label>Category Image URL (Google Drive)</label>
+                  <input
+                    type="text"
+                    value={categoryForm.image}
+                    onChange={(e) => setCategoryForm({...categoryForm, image: e.target.value})}
+                    placeholder="Paste Google Drive image URL"
+                  />
                 </div>
                 <div className="form-row">
                   <div className="form-group">

@@ -21,12 +21,13 @@ exports.getAllCategories = async (req, res) => {
 
 exports.createCategory = async (req, res) => {
   try {
-    const { name, description, defaultPrice, defaultDiscount, type } = req.body;
+    const { name, description, defaultPrice, defaultDiscount, type, image } = req.body;
     const slug = name.toLowerCase().replace(/\s+/g, '-');
 
     const category = new Category({
       name,
       description,
+      image,
       defaultPrice,
       defaultDiscount,
       type: type || 'product',
@@ -42,10 +43,10 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
-    const { name, description, defaultPrice, defaultDiscount, applyDefaultsToProducts, type } = req.body;
+    const { name, description, defaultPrice, defaultDiscount, applyDefaultsToProducts, type, image } = req.body;
     const slug = name.toLowerCase().replace(/\s+/g, '-');
 
-    const update = { name, description, defaultPrice, defaultDiscount, slug };
+    const update = { name, description, image, defaultPrice, defaultDiscount, slug };
     if (typeof type !== 'undefined') {
       update.type = type;
     }

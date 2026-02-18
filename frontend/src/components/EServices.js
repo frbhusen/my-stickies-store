@@ -120,6 +120,12 @@ const EServices = () => {
     return '💻';
   };
 
+  const categoryImageUrl = (category) => {
+    const image = (category?.image || '').trim();
+    if (!image) return '';
+    return primaryImageUrl(image);
+  };
+
   const selectedCategoryData = categories.find(cat => cat.slug === selectedCategory);
   const filteredServices = selectedCategory
     ? services.filter(service => service.category?.slug === selectedCategory)
@@ -199,6 +205,7 @@ const EServices = () => {
         <div className="eservice-categories-grid">
           {categories.map(category => {
             const count = services.filter(service => service.category?.slug === category.slug).length;
+            const imageUrl = categoryImageUrl(category);
             return (
               <button
                 key={category._id}
@@ -206,7 +213,19 @@ const EServices = () => {
                 className="eservice-category-card"
                 onClick={() => setSelectedCategory(category.slug)}
               >
-                <div className="category-icon">{getCategoryIcon(category)}</div>
+                {imageUrl ? (
+                  <div className="category-image-wrapper">
+                    <img
+                      src={imageUrl}
+                      alt={category.name}
+                      className="category-image"
+                      data-fallback-idx="0"
+                      onError={(e) => handleImageError(e, category.image)}
+                    />
+                  </div>
+                ) : (
+                  <div className="category-icon">{getCategoryIcon(category)}</div>
+                )}
                 <h3>{category.name}</h3>
                 <p className="category-count">{count} {t('eservices.servicesCount')}</p>
               </button>
