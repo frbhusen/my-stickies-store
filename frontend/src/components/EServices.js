@@ -164,7 +164,9 @@ const EServices = () => {
               }
             }}
           >
-            {selectedSubCategory ? t('eservices.backToSubcategories') : t('eservices.backToCategories')}
+            {selectedSubCategory
+              ? t('eservices.backToSubcategories', 'Back to Sub-Categories')
+              : t('eservices.backToCategories', 'Back to Categories')}
           </button>
         )}
       </div>
@@ -223,7 +225,7 @@ const EServices = () => {
         )
       ) : selectedCategory ? (
         filteredSubCategories.length === 0 ? (
-          <div className="no-services">{t('eservices.noSubcategories')}</div>
+          <div className="no-services">{t('eservices.noSubcategories', 'No sub-categories found')}</div>
         ) : (
           <div className="eservice-categories-grid">
             {filteredSubCategories.map(category => {
@@ -250,7 +252,7 @@ const EServices = () => {
                     <div className="category-icon">{getCategoryIcon(category)}</div>
                   )}
                   <h3>{category.name}</h3>
-                  <p className="category-count">{count} {t('eservices.servicesCount')}</p>
+                  <p className="category-count">{count} {t('eservices.servicesCount', 'services')}</p>
                 </button>
               );
             })}
@@ -287,7 +289,7 @@ const EServices = () => {
                   <div className="category-icon">{getCategoryIcon(category)}</div>
                 )}
                 <h3>{category.name}</h3>
-                <p className="category-count">{count} {t('eservices.subcategoriesCount')}</p>
+                <p className="category-count">{count} {t('eservices.subcategoriesCount', 'sub-categories')}</p>
               </button>
             );
           })}
