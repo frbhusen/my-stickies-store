@@ -31,6 +31,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
   const [showProductForm, setShowProductForm] = useState(false);
+  const [inlineEditProductId, setInlineEditProductId] = useState(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchImages, setBatchImages] = useState('');
@@ -143,6 +144,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddProduct = () => {
     setEditingProduct(null);
+    setInlineEditProductId(null);
     setProductForm({
       name: '',
       description: '',
@@ -227,7 +229,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       image: normalizeImageUrl(product.image),
       category: product.category._id
     });
-    setShowProductForm(true);
+    setShowProductForm(false);
+    setInlineEditProductId(product._id);
   };
 
   const handleSaveProduct = async (e) => {
@@ -245,6 +248,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
         await api.post('/products', payload);
       }
       setShowProductForm(false);
+      setInlineEditProductId(null);
+      setEditingProduct(null);
       fetchProducts(resolvedType);
     } catch (error) {
       alert('Error saving product: ' + error.response?.data?.message);
@@ -554,6 +559,94 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   };
 
+  const renderProductForm = (onCancel) => (
+    <form className="form-card" onSubmit={handleSaveProduct}>
+      <h3>{editingProduct ? (isEservicesTab ? 'Edit E-Service' : 'Edit Product') : (isEservicesTab ? 'Add New E-Service' : 'Add New Product')}</h3>
+      <div className="form-group">
+        <label>{isEservicesTab ? 'Service Name' : 'Product Name'}</label>
+        <input
+          type="text"
+          value={productForm.name}
+          onChange={(e) => setProductForm({...productForm, name: e.target.value})}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea
+          value={productForm.description}
+          onChange={(e) => setProductForm({...productForm, description: e.target.value})}
+        />
+      </div>
+      <div className="form-group">
+        <label>Type</label>
+        <select
+          value={productForm.type}
+          onChange={(e) => setProductForm({...productForm, type: e.target.value})}
+          disabled={activeTab === 'products' || activeTab === 'eservices'}
+        >
+          <option value="product">Physical Product</option>
+          <option value="eservice">E-Service</option>
+        </select>
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Price</label>
+          <input
+            type="number"
+            step="0.01"
+            value={productForm.price}
+            onChange={(e) => setProductForm({...productForm, price: e.target.value})}
+          />
+        </div>
+        <div className="form-group">
+          <label>Discount (%)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={productForm.discount}
+            onChange={(e) => setProductForm({...productForm, discount: e.target.value})}
+          />
+        </div>
+      </div>
+      <div className="form-group">
+        <label>Image URL (Google Drive)</label>
+        <input
+          type="text"
+          value={productForm.image}
+          onChange={(e) => handleImageUrlChange(e.target.value)}
+          placeholder="Paste Google Drive image URL"
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label>Category</label>
+        <select
+          value={productForm.category}
+          onChange={(e) => setProductForm(applyCategoryDefaultsToProduct(e.target.value, {...productForm, category: e.target.value}))}
+          required
+        >
+          <option value="">Select Category</option>
+          {categories
+            .filter(cat => !productForm.type || cat.type === productForm.type)
+            .map(cat => (
+            <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
+        </select>
+      </div>
+      <div className="form-buttons">
+        <button type="submit" className="btn-primary">Save</button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+
   return (
     <div className="admin-dashboard">
       <aside className="admin-sidebar">
@@ -653,93 +746,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
               </form>
             )}
 
-            {showProductForm && (
-              <form className="form-card" onSubmit={handleSaveProduct}>
-                <h3>{editingProduct ? (isEservicesTab ? 'Edit E-Service' : 'Edit Product') : (isEservicesTab ? 'Add New E-Service' : 'Add New Product')}</h3>
-                <div className="form-group">
-                  <label>{isEservicesTab ? 'Service Name' : 'Product Name'}</label>
-                  <input
-                    type="text"
-                    value={productForm.name}
-                    onChange={(e) => setProductForm({...productForm, name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Description</label>
-                  <textarea
-                    value={productForm.description}
-                    onChange={(e) => setProductForm({...productForm, description: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Type</label>
-                  <select
-                    value={productForm.type}
-                    onChange={(e) => setProductForm({...productForm, type: e.target.value})}
-                    disabled={activeTab === 'products' || activeTab === 'eservices'}
-                  >
-                    <option value="product">Physical Product</option>
-                    <option value="eservice">E-Service</option>
-                  </select>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Price</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={productForm.price}
-                      onChange={(e) => setProductForm({...productForm, price: e.target.value})}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Discount (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={productForm.discount}
-                      onChange={(e) => setProductForm({...productForm, discount: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>Image URL (Google Drive)</label>
-                  <input
-                    type="text"
-                    value={productForm.image}
-                    onChange={(e) => handleImageUrlChange(e.target.value)}
-                    placeholder="Paste Google Drive image URL"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Category</label>
-                  <select
-                    value={productForm.category}
-                    onChange={(e) => setProductForm(applyCategoryDefaultsToProduct(e.target.value, {...productForm, category: e.target.value}))}
-                    required
-                  >
-                    <option value="">Select Category</option>
-                    {categories
-                      .filter(cat => !productForm.type || cat.type === productForm.type)
-                      .map(cat => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                      ))}
-                  </select>
-                </div>
-                <div className="form-buttons">
-                  <button type="submit" className="btn-primary">Save</button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setShowProductForm(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
+            {showProductForm && renderProductForm(() => setShowProductForm(false))}
 
             {loading ? (
               <p>{isEservicesTab ? 'Loading e-services...' : 'Loading products...'}</p>
@@ -769,42 +776,51 @@ const AdminDashboard = ({ isAuthenticated }) => {
                       const imgSrc = normalizeImageUrl(product.image) || logo;
                       const isSelected = selectedProducts.includes(product._id);
                       return (
-                      <tr key={product._id} className={isSelected ? 'selected-row' : ''}>
-                        <td>
-                          <input 
-                            type="checkbox" 
-                            checked={isSelected}
-                            onChange={() => toggleProductSelection(product._id)}
-                          />
-                        </td>
-                        <td>
-                          <img 
-                            src={imgSrc} 
-                            alt={product.name} 
-                            className="table-image"
-                            onError={(e) => handleTableImageError(e, product.image)}
-                            data-fallback-idx="0"
-                          />
-                        </td>
-                        <td>{product.name}</td>
-                        <td>SYP {Number(product.price || 0).toFixed(2)}</td>
-                        <td>{product.discount}%</td>
-                        <td>{product.category?.name}</td>
-                        <td>
-                          <button
-                            className="btn-edit"
-                            onClick={() => handleEditProduct(product)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn-delete"
-                            onClick={() => handleDeleteProduct(product._id)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
+                      <React.Fragment key={product._id}>
+                        <tr className={isSelected ? 'selected-row' : ''}>
+                          <td>
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected}
+                              onChange={() => toggleProductSelection(product._id)}
+                            />
+                          </td>
+                          <td>
+                            <img 
+                              src={imgSrc} 
+                              alt={product.name} 
+                              className="table-image"
+                              onError={(e) => handleTableImageError(e, product.image)}
+                              data-fallback-idx="0"
+                            />
+                          </td>
+                          <td>{product.name}</td>
+                          <td>SYP {Number(product.price || 0).toFixed(2)}</td>
+                          <td>{product.discount}%</td>
+                          <td>{product.category?.name}</td>
+                          <td>
+                            <button
+                              className="btn-edit"
+                              onClick={() => handleEditProduct(product)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn-delete"
+                              onClick={() => handleDeleteProduct(product._id)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                        {inlineEditProductId === product._id && (
+                          <tr className="inline-edit-row">
+                            <td colSpan="7">
+                              {renderProductForm(() => setInlineEditProductId(null))}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                       );
                     })}
                   </tbody>

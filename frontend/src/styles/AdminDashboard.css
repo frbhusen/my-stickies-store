@@ -251,6 +251,18 @@
   background-color: #bbdefb;
 }
 
+.inline-edit-row td {
+  background-color: #f5f9ff;
+  padding: 0;
+}
+
+.inline-edit-row .form-card {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  animation: slideInDown 0.25s ease-out;
+}
+
 .table-image {
   max-width: 50px;
   max-height: 50px;
