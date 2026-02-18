@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
@@ -16,7 +16,6 @@ function AppRoutes() {
   const [cartCount, setCartCount] = useState(0);
   const { i18n } = useTranslation();
   const location = useLocation();
-  const prevLangRef = useRef(i18n.language || 'ar');
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -30,19 +29,17 @@ function AppRoutes() {
     if (isAdminPath) {
       // Force admin to English, LTR
       if (i18n.language !== 'en') {
-        prevLangRef.current = i18n.language;
         i18n.changeLanguage('en');
       }
       document.documentElement.lang = 'en';
       document.documentElement.dir = 'ltr';
     } else {
-      // Restore user-chosen language for storefront
-      const targetLang = localStorage.getItem('appLang') || prevLangRef.current || 'ar';
-      if (i18n.language !== targetLang) {
-        i18n.changeLanguage(targetLang);
+      // Force storefront to Arabic, RTL
+      if (i18n.language !== 'ar') {
+        i18n.changeLanguage('ar');
       }
-      document.documentElement.lang = targetLang;
-      document.documentElement.dir = targetLang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = 'ar';
+      document.documentElement.dir = 'rtl';
     }
   }, [i18n, location.pathname]);
 
