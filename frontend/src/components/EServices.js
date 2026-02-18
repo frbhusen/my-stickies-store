@@ -7,6 +7,7 @@ const EServices = () => {
   const { t } = useTranslation();
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubCategory, setSelectedSubCategory] = useState('');
   const [loading, setLoading] = useState(true);
@@ -92,10 +93,20 @@ const EServices = () => {
     }
   }, []);
 
+  const fetchSubCategories = useCallback(async () => {
+    try {
+      const response = await api.get('/subcategories', { params: { type: 'eservice' } });
+      setSubCategories(response.data);
+    } catch (error) {
+      console.error('Error fetching sub-categories:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchCategories();
     fetchServices();
-  }, [fetchCategories, fetchServices]);
+    fetchSubCategories();
+  }, [fetchCategories, fetchServices, fetchSubCategories]);
 
   const handleAddToCart = (service) => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -127,13 +138,13 @@ const EServices = () => {
     return primaryImageUrl(image);
   };
 
-  const topCategories = categories.filter(cat => !cat.parentCategory);
-  const subCategories = selectedCategory
-    ? categories.filter(cat => cat.parentCategory === selectedCategory)
+  const topCategories = categories;
+  const filteredSubCategories = selectedCategory
+    ? subCategories.filter(sub => sub.category?._id === selectedCategory || sub.category === selectedCategory)
     : [];
-  const selectedSubCategoryData = categories.find(cat => cat._id === selectedSubCategory);
+  const selectedSubCategoryData = subCategories.find(sub => sub._id === selectedSubCategory);
   const filteredServices = selectedSubCategory
-    ? services.filter(service => service.category?._id === selectedSubCategory)
+    ? services.filter(service => service.subCategory?._id === selectedSubCategory || service.subCategory === selectedSubCategory)
     : [];
 
   return (
@@ -211,12 +222,12 @@ const EServices = () => {
           </div>
         )
       ) : selectedCategory ? (
-        subCategories.length === 0 ? (
+        filteredSubCategories.length === 0 ? (
           <div className="no-services">{t('eservices.noSubcategories')}</div>
         ) : (
           <div className="eservice-categories-grid">
-            {subCategories.map(category => {
-              const count = services.filter(service => service.category?._id === category._id).length;
+            {filteredSubCategories.map(category => {
+              const count = services.filter(service => service.subCategory?._id === category._id).length;
               const imageUrl = categoryImageUrl(category);
               return (
                 <button
@@ -250,7 +261,7 @@ const EServices = () => {
       ) : (
         <div className="eservice-categories-grid">
           {topCategories.map(category => {
-            const count = categories.filter(cat => cat.parentCategory === category._id).length;
+            const count = subCategories.filter(sub => sub.category?._id === category._id || sub.category === category._id).length;
             const imageUrl = categoryImageUrl(category);
             return (
               <button

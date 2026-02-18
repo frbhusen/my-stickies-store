@@ -29,6 +29,10 @@ const productSchema = new mongoose.Schema({
     ref: 'Category',
     required: true
   },
+  subCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SubCategory'
+  },
   stock: {
     type: Number,
     default: -1 // -1 means unlimited

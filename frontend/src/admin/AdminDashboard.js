@@ -26,6 +26,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -33,9 +34,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [showProductForm, setShowProductForm] = useState(false);
   const [inlineEditProductId, setInlineEditProductId] = useState(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showSubCategoryForm, setShowSubCategoryForm] = useState(false);
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchImages, setBatchImages] = useState('');
   const [batchCategory, setBatchCategory] = useState('');
+  const [batchSubCategory, setBatchSubCategory] = useState('');
   const [selectedProducts, setSelectedProducts] = useState([]);
 
   const [productForm, setProductForm] = useState({
@@ -44,6 +47,14 @@ const AdminDashboard = ({ isAuthenticated }) => {
     price: '',
     type: 'product',
     discount: '',
+    image: '',
+    category: '',
+    subCategory: ''
+  });
+
+  const [subCategoryForm, setSubCategoryForm] = useState({
+    name: '',
+    description: '',
     image: '',
     category: ''
   });
@@ -55,8 +66,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
     defaultPrice: '',
     type: 'product',
     defaultDiscount: '',
-    parentCategory: '',
-    isSubCategory: false,
     applyDefaultsToProducts: false
   });
 
@@ -92,6 +101,15 @@ const AdminDashboard = ({ isAuthenticated }) => {
       setCategories(response.data);
     } catch (error) {
       alert('Error fetching categories');
+    }
+  }, []);
+
+  const fetchSubCategories = useCallback(async () => {
+    try {
+      const response = await api.get('/subcategories', { params: { type: 'eservice' } });
+      setSubCategories(response.data);
+    } catch (error) {
+      alert('Error fetching sub-categories');
     }
   }, []);
 
@@ -134,12 +152,15 @@ const AdminDashboard = ({ isAuthenticated }) => {
       const type = activeTab === 'eservices' ? 'eservice' : 'product';
       fetchProducts(type);
       fetchCategories(type);
+      if (activeTab === 'eservices') {
+        fetchSubCategories();
+      }
     } else if (activeTab === 'categories') {
       fetchCategories();
     } else if (activeTab === 'orders') {
       fetchOrders();
     }
-  }, [activeTab, fetchCategories, fetchOrders, fetchProducts]);
+  }, [activeTab, fetchCategories, fetchOrders, fetchProducts, fetchSubCategories]);
 
   useEffect(() => {
     setSelectedProducts([]);
@@ -155,7 +176,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       type: isEservicesTab ? 'eservice' : 'product',
       discount: '',
       image: '',
-      category: ''
+      category: '',
+      subCategory: ''
     });
     setShowProductForm(true);
   };
@@ -163,13 +185,19 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const handleBatchAdd = () => {
     setBatchImages('');
     setBatchCategory('');
+    setBatchSubCategory('');
     setShowBatchForm(true);
   };
 
   const handleSaveBatchProducts = async (e) => {
     e.preventDefault();
     
-    if (!batchCategory) {
+    if (isEservicesTab) {
+      if (!batchSubCategory) {
+        alert('Please select a sub-category');
+        return;
+      }
+    } else if (!batchCategory) {
       alert('Please select a category');
       return;
     }
@@ -183,12 +211,14 @@ const AdminDashboard = ({ isAuthenticated }) => {
     
     // Find category defaults
     const cat = categories.find(c => c._id === batchCategory);
+    const subCat = subCategories.find(s => s._id === batchSubCategory);
+    const parentCat = subCat?.category || null;
     const defaults = {
-      price: cat?.defaultPrice || '',
-      discount: cat?.defaultDiscount || '',
-      description: cat?.description || ''
+      price: isEservicesTab ? (parentCat?.defaultPrice || '') : (cat?.defaultPrice || ''),
+      discount: isEservicesTab ? (parentCat?.defaultDiscount || '') : (cat?.defaultDiscount || ''),
+      description: isEservicesTab ? (parentCat?.description || '') : (cat?.description || '')
     };
-    const resolvedType = cat?.type || (isEservicesTab ? 'eservice' : 'product');
+    const resolvedType = isEservicesTab ? 'eservice' : (cat?.type || 'product');
     
     try {
       let successCount = 0;
@@ -201,7 +231,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
         const productData = {
           name: `${baseName} ${index}`,
           image: normalized,
-          category: batchCategory,
+          category: isEservicesTab ? undefined : batchCategory,
+          subCategory: isEservicesTab ? batchSubCategory : undefined,
           type: resolvedType,
           ...defaults
         };
@@ -215,6 +246,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       setShowBatchForm(false);
       setBatchImages('');
       setBatchCategory('');
+      setBatchSubCategory('');
       fetchProducts(resolvedType);
     } catch (error) {
       alert('Error adding products: ' + (error.response?.data?.message || error.message));
@@ -230,7 +262,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       type: product.type || 'product',
       discount: product.discount,
       image: normalizeImageUrl(product.image),
-      category: product.category._id
+      category: product.category?._id || '',
+      subCategory: product.subCategory?._id || ''
     });
     setShowProductForm(false);
     setInlineEditProductId(product._id);
@@ -244,6 +277,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
       type: resolvedType,
       image: normalizeImageUrl(productForm.image)
     };
+    if (resolvedType === 'eservice') {
+      payload.category = undefined;
+    } else {
+      payload.subCategory = undefined;
+    }
     try {
       if (editingProduct) {
         await api.put(`/products/${editingProduct._id}`, payload);
@@ -306,24 +344,64 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'product', defaultDiscount: '', parentCategory: '', isSubCategory: false, applyDefaultsToProducts: false });
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'product', defaultDiscount: '', applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
   const handleAddEserviceCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'eservice', defaultDiscount: '', parentCategory: '', isSubCategory: false, applyDefaultsToProducts: false });
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'eservice', defaultDiscount: '', applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
-  const handleAddEserviceSubCategory = () => {
+  const handleAddSubCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'eservice', defaultDiscount: '', parentCategory: '', isSubCategory: true, applyDefaultsToProducts: false });
-    setShowCategoryForm(true);
+    setSubCategoryForm({ name: '', description: '', image: '', category: '' });
+    setShowSubCategoryForm(true);
+  };
+
+  const handleEditSubCategory = (subCategory) => {
+    setEditingCategory(subCategory);
+    setSubCategoryForm({
+      name: subCategory.name,
+      description: subCategory.description || '',
+      image: subCategory.image || '',
+      category: subCategory.category?._id || ''
+    });
+    setShowSubCategoryForm(true);
+  };
+
+  const handleSaveSubCategory = async (e) => {
+    e.preventDefault();
+    if (!subCategoryForm.category) {
+      alert('Please select a parent category');
+      return;
+    }
+    try {
+      if (editingCategory && editingCategory.category) {
+        await api.put(`/subcategories/${editingCategory._id}`, subCategoryForm);
+      } else {
+        await api.post('/subcategories', subCategoryForm);
+      }
+      setShowSubCategoryForm(false);
+      setEditingCategory(null);
+      fetchSubCategories();
+    } catch (error) {
+      alert('Error saving sub-category');
+    }
+  };
+
+  const handleDeleteSubCategory = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this sub-category?')) return;
+    try {
+      await api.delete(`/subcategories/${id}`);
+      fetchSubCategories();
+    } catch (error) {
+      alert('Error deleting sub-category');
+    }
   };
 
   const handleEditCategory = (category) => {
-    const parentId = category.parentCategory?._id || category.parentCategory || '';
     setEditingCategory(category);
     setCategoryForm({
       name: category.name,
@@ -332,8 +410,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
       defaultPrice: category.defaultPrice ?? '',
       type: category.type || 'product',
       defaultDiscount: category.defaultDiscount ?? '',
-      parentCategory: parentId,
-      isSubCategory: !!parentId,
       applyDefaultsToProducts: false
     });
     setShowCategoryForm(true);
@@ -342,16 +418,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const handleSaveCategory = async (e) => {
     e.preventDefault();
     try {
-      if (categoryForm.type === 'eservice' && categoryForm.isSubCategory && !categoryForm.parentCategory) {
-        alert('Please select a parent category for this sub-category.');
-        return;
-      }
-      const payload = {
-        ...categoryForm,
-        parentCategory: categoryForm.type === 'eservice' && categoryForm.isSubCategory
-          ? categoryForm.parentCategory
-          : null
-      };
+      const payload = { ...categoryForm };
       if (editingCategory) {
         await api.put(`/categories/${editingCategory._id}`, payload);
       } else {
@@ -646,29 +713,60 @@ const AdminDashboard = ({ isAuthenticated }) => {
           type="text"
           value={productForm.image}
           onChange={(e) => handleImageUrlChange(e.target.value)}
-          placeholder="Paste Google Drive image URL"
+          placeholder={productForm.type === 'eservice' ? 'Uses sub-category image' : 'Paste Google Drive image URL'}
           required
+          disabled={productForm.type === 'eservice'}
         />
       </div>
-      <div className="form-group">
-        <label>Category</label>
-        <select
-          value={productForm.category}
-          onChange={(e) => setProductForm(applyCategoryDefaultsToProduct(e.target.value, {...productForm, category: e.target.value}))}
-          required
-        >
-          <option value="">Select Category</option>
-          {categories
-            .filter(cat => {
-              if (!productForm.type || cat.type !== productForm.type) return false;
-              if (productForm.type === 'eservice') return !!cat.parentCategory;
-              return true;
-            })
-            .map(cat => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
+      {productForm.type === 'eservice' ? (
+        <div className="form-group">
+          <label>Sub-Category</label>
+          <select
+            value={productForm.subCategory}
+            onChange={(e) => {
+              const subId = e.target.value;
+              const sub = subCategories.find(s => s._id === subId);
+              const parent = sub?.category || null;
+              const updated = { ...productForm, subCategory: subId };
+              if (parent) {
+                if (!updated.price && parent.defaultPrice !== undefined && parent.defaultPrice !== null) {
+                  updated.price = parent.defaultPrice;
+                }
+                if ((updated.discount === '' || updated.discount === null || typeof updated.discount === 'undefined')
+                  && typeof parent.defaultDiscount !== 'undefined' && parent.defaultDiscount !== null) {
+                  updated.discount = parent.defaultDiscount;
+                }
+                if (!updated.description && parent.description) {
+                  updated.description = parent.description;
+                }
+              }
+              setProductForm(updated);
+            }}
+            required
+          >
+            <option value="">Select Sub-Category</option>
+            {subCategories.map(sub => (
+              <option key={sub._id} value={sub._id}>{sub.name}</option>
             ))}
-        </select>
-      </div>
+          </select>
+        </div>
+      ) : (
+        <div className="form-group">
+          <label>Category</label>
+          <select
+            value={productForm.category}
+            onChange={(e) => setProductForm(applyCategoryDefaultsToProduct(e.target.value, {...productForm, category: e.target.value}))}
+            required
+          >
+            <option value="">Select Category</option>
+            {categories
+              .filter(cat => !productForm.type || cat.type === productForm.type)
+              .map(cat => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+          </select>
+        </div>
+      )}
       <div className="form-buttons">
         <button type="submit" className="btn-primary">Save</button>
         <button
@@ -705,53 +803,12 @@ const AdminDashboard = ({ isAuthenticated }) => {
         <label>Category Type</label>
         <select
           value={categoryForm.type}
-          onChange={(e) => {
-            const nextType = e.target.value;
-            setCategoryForm({
-              ...categoryForm,
-              type: nextType,
-              parentCategory: nextType === 'eservice' ? categoryForm.parentCategory : '',
-              isSubCategory: nextType === 'eservice' ? categoryForm.isSubCategory : false
-            });
-          }}
+          onChange={(e) => setCategoryForm({ ...categoryForm, type: e.target.value })}
         >
           <option value="product">Physical Products</option>
           <option value="eservice">E-Services</option>
         </select>
       </div>
-      {categoryForm.type === 'eservice' && (
-        <div className="form-group checkbox-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={categoryForm.isSubCategory}
-              onChange={(e) => setCategoryForm({
-                ...categoryForm,
-                isSubCategory: e.target.checked,
-                parentCategory: e.target.checked ? categoryForm.parentCategory : ''
-              })}
-            />
-            This is a sub-category
-          </label>
-        </div>
-      )}
-      {categoryForm.type === 'eservice' && categoryForm.isSubCategory && (
-        <div className="form-group">
-          <label>Parent Category (optional)</label>
-          <select
-            value={categoryForm.parentCategory}
-            onChange={(e) => setCategoryForm({...categoryForm, parentCategory: e.target.value})}
-            required
-          >
-            <option value="">No parent (top-level)</option>
-            {categories
-              .filter(cat => cat.type === 'eservice' && !cat.parentCategory)
-              .map(cat => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-          </select>
-        </div>
-      )}
       <div className="form-group">
         <label>Category Image URL (Google Drive)</label>
         <input
@@ -806,11 +863,62 @@ const AdminDashboard = ({ isAuthenticated }) => {
     </form>
   );
 
-  const topLevelEserviceCategories = categories.filter(
-    (cat) => cat.type === 'eservice' && !cat.parentCategory
+  const renderSubCategoryForm = (onCancel) => (
+    <form className="form-card" onSubmit={handleSaveSubCategory}>
+      <h3>{editingCategory && editingCategory.category ? 'Edit Sub-Category' : 'Add New Sub-Category'}</h3>
+      <div className="form-group">
+        <label>Sub-Category Name</label>
+        <input
+          type="text"
+          value={subCategoryForm.name}
+          onChange={(e) => setSubCategoryForm({...subCategoryForm, name: e.target.value})}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea
+          value={subCategoryForm.description}
+          onChange={(e) => setSubCategoryForm({...subCategoryForm, description: e.target.value})}
+        />
+      </div>
+      <div className="form-group">
+        <label>Parent Category</label>
+        <select
+          value={subCategoryForm.category}
+          onChange={(e) => setSubCategoryForm({...subCategoryForm, category: e.target.value})}
+          required
+        >
+          <option value="">Select Parent Category</option>
+          {categories.filter(cat => cat.type === 'eservice').map(cat => (
+            <option key={cat._id} value={cat._id}>{cat.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="form-group">
+        <label>Sub-Category Image URL (Google Drive)</label>
+        <input
+          type="text"
+          value={subCategoryForm.image}
+          onChange={(e) => setSubCategoryForm({...subCategoryForm, image: e.target.value})}
+          placeholder="Paste Google Drive image URL"
+        />
+      </div>
+      <div className="form-buttons">
+        <button type="submit" className="btn-primary">Save</button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
-  const subEserviceCategories = categories.filter(
-    (cat) => cat.type === 'eservice' && cat.parentCategory
+
+  const topLevelEserviceCategories = categories.filter(
+    (cat) => cat.type === 'eservice'
   );
 
   return (
@@ -875,18 +983,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
               <form className="form-card" onSubmit={handleSaveBatchProducts}>
                 <h3>{isEservicesTab ? 'Batch Add E-Services' : 'Batch Add Products'}</h3>
                 <div className="form-group">
-                  <label>Category</label>
+                  <label>{isEservicesTab ? 'Sub-Category' : 'Category'}</label>
                   <select
-                    value={batchCategory}
-                    onChange={(e) => setBatchCategory(e.target.value)}
+                    value={isEservicesTab ? batchSubCategory : batchCategory}
+                    onChange={(e) => isEservicesTab ? setBatchSubCategory(e.target.value) : setBatchCategory(e.target.value)}
                     required
                   >
-                    <option value="">Select Category</option>
-                    {categories
-                      .filter(cat => !isEservicesTab || (cat.type === 'eservice' && cat.parentCategory))
-                      .map(cat => (
-                        <option key={cat._id} value={cat._id}>{cat.name}</option>
-                      ))}
+                    <option value="">Select {isEservicesTab ? 'Sub-Category' : 'Category'}</option>
+                    {(isEservicesTab ? subCategories : categories).map(cat => (
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
+                    ))}
                   </select>
                   <small style={{color: '#666', fontSize: '12px'}}>All products will use this category's default price, discount, and description</small>
                 </div>
@@ -1004,9 +1110,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     <button className="btn-primary" onClick={handleAddEserviceCategory}>
                       + Add Top Category
                     </button>
-                    <button className="btn-secondary" onClick={handleAddEserviceSubCategory}>
-                      + Add Sub-Category
-                    </button>
                   </div>
                 </div>
                 {showCategoryForm && renderCategoryForm(() => setShowCategoryForm(false))}
@@ -1019,7 +1122,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
                       <div key={category._id} className="category-card">
                         <h3>{category.name}</h3>
                         <p>{category.description}</p>
-                        <p className="meta">Parent: —</p>
                         <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
                         <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
                         <div className="card-actions">
@@ -1041,28 +1143,32 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   )}
                 </div>
 
-                <h3 style={{ marginTop: '1.5rem' }}>Sub-Categories</h3>
+                <div className="content-header" style={{ marginTop: '1.5rem' }}>
+                  <h2>Sub-Categories</h2>
+                  <button className="btn-secondary" onClick={handleAddSubCategory}>
+                    + Add Sub-Category
+                  </button>
+                </div>
+                {showSubCategoryForm && renderSubCategoryForm(() => setShowSubCategoryForm(false))}
                 <div className="categories-grid">
-                  {subEserviceCategories.length === 0 ? (
+                  {subCategories.length === 0 ? (
                     <p>No sub-categories yet.</p>
                   ) : (
-                    subEserviceCategories.map(category => (
-                      <div key={category._id} className="category-card">
-                        <h3>{category.name}</h3>
-                        <p>{category.description}</p>
-                        <p className="meta">Parent: {categories.find(c => c._id === category.parentCategory)?.name || '—'}</p>
-                        <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
-                        <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
+                    subCategories.map(sub => (
+                      <div key={sub._id} className="category-card">
+                        <h3>{sub.name}</h3>
+                        <p>{sub.description}</p>
+                        <p className="meta">Parent: {sub.category?.name || '—'}</p>
                         <div className="card-actions">
                           <button
                             className="btn-edit"
-                            onClick={() => handleEditCategory(category)}
+                            onClick={() => handleEditSubCategory(sub)}
                           >
                             Edit
                           </button>
                           <button
                             className="btn-delete"
-                            onClick={() => handleDeleteCategory(category._id)}
+                            onClick={() => handleDeleteSubCategory(sub._id)}
                           >
                             Delete
                           </button>
@@ -1094,7 +1200,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   <h3>{category.name}</h3>
                   <p>{category.description}</p>
                   <p className="meta">Type: {category.type === 'eservice' ? 'E-Service' : 'Product'}</p>
-                  <p className="meta">Parent: {category.parentCategory ? (categories.find(c => c._id === category.parentCategory)?.name || '—') : '—'}</p>
                   <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
                   <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
                   <div className="card-actions">
