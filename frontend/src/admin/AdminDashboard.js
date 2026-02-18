@@ -56,6 +56,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
     type: 'product',
     defaultDiscount: '',
     parentCategory: '',
+    isSubCategory: false,
     applyDefaultsToProducts: false
   });
 
@@ -305,13 +306,19 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'product', defaultDiscount: '', parentCategory: '', applyDefaultsToProducts: false });
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'product', defaultDiscount: '', parentCategory: '', isSubCategory: false, applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
   const handleAddEserviceCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'eservice', defaultDiscount: '', parentCategory: '', applyDefaultsToProducts: false });
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'eservice', defaultDiscount: '', parentCategory: '', isSubCategory: false, applyDefaultsToProducts: false });
+    setShowCategoryForm(true);
+  };
+
+  const handleAddEserviceSubCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: '', description: '', image: '', defaultPrice: '', type: 'eservice', defaultDiscount: '', parentCategory: '', isSubCategory: true, applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
@@ -325,6 +332,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       type: category.type || 'product',
       defaultDiscount: category.defaultDiscount ?? '',
       parentCategory: category.parentCategory || '',
+      isSubCategory: !!category.parentCategory,
       applyDefaultsToProducts: false
     });
     setShowCategoryForm(true);
@@ -333,6 +341,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const handleSaveCategory = async (e) => {
     e.preventDefault();
     try {
+      if (categoryForm.type === 'eservice' && categoryForm.isSubCategory && !categoryForm.parentCategory) {
+        alert('Please select a parent category for this sub-category.');
+        return;
+      }
       if (editingCategory) {
         await api.put(`/categories/${editingCategory._id}`, categoryForm);
       } else {
@@ -686,18 +698,43 @@ const AdminDashboard = ({ isAuthenticated }) => {
         <label>Category Type</label>
         <select
           value={categoryForm.type}
-          onChange={(e) => setCategoryForm({...categoryForm, type: e.target.value})}
+          onChange={(e) => {
+            const nextType = e.target.value;
+            setCategoryForm({
+              ...categoryForm,
+              type: nextType,
+              parentCategory: nextType === 'eservice' ? categoryForm.parentCategory : '',
+              isSubCategory: nextType === 'eservice' ? categoryForm.isSubCategory : false
+            });
+          }}
         >
           <option value="product">Physical Products</option>
           <option value="eservice">E-Services</option>
         </select>
       </div>
       {categoryForm.type === 'eservice' && (
+        <div className="form-group checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={categoryForm.isSubCategory}
+              onChange={(e) => setCategoryForm({
+                ...categoryForm,
+                isSubCategory: e.target.checked,
+                parentCategory: e.target.checked ? categoryForm.parentCategory : ''
+              })}
+            />
+            This is a sub-category
+          </label>
+        </div>
+      )}
+      {categoryForm.type === 'eservice' && categoryForm.isSubCategory && (
         <div className="form-group">
           <label>Parent Category (optional)</label>
           <select
             value={categoryForm.parentCategory}
             onChange={(e) => setCategoryForm({...categoryForm, parentCategory: e.target.value})}
+            required
           >
             <option value="">No parent (top-level)</option>
             {categories
@@ -956,9 +993,14 @@ const AdminDashboard = ({ isAuthenticated }) => {
               <div className="tab-content" style={{ marginTop: '2rem' }}>
                 <div className="content-header">
                   <h2>E-Service Categories</h2>
-                  <button className="btn-primary" onClick={handleAddEserviceCategory}>
-                    + Add E-Service Category
-                  </button>
+                  <div className="header-buttons">
+                    <button className="btn-primary" onClick={handleAddEserviceCategory}>
+                      + Add Top Category
+                    </button>
+                    <button className="btn-secondary" onClick={handleAddEserviceSubCategory}>
+                      + Add Sub-Category
+                    </button>
+                  </div>
                 </div>
                 {showCategoryForm && renderCategoryForm(() => setShowCategoryForm(false))}
                 <h3 style={{ marginTop: '1rem' }}>Top-Level Categories</h3>
