@@ -6,12 +6,6 @@ import logo from '../assets/logo.png';
 const Header = ({ cartCount }) => {
   const { t, i18n } = useTranslation();
 
-  const toggleLang = () => {
-    const next = i18n.language === 'ar' ? 'en' : 'ar';
-    i18n.changeLanguage(next);
-    localStorage.setItem('appLang', next);
-  };
-
   return (
     <header className="header">
       <div className="header-container">
@@ -26,7 +20,6 @@ const Header = ({ cartCount }) => {
             {t('header.cart')}
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </a>
-          <button onClick={toggleLang} className="lang-btn">{t('header.language')}</button>
         </nav>
       </div>
     </header>
