@@ -31,7 +31,8 @@
     "allCategories": "جميع الأقسام",
     "loading": "جاري تحميل المنتجات...",
     "originalPrice": "السعر الأصلي",
-    "finalPrice": "السعر"
+    "finalPrice": "السعر",
+    "viewAll": "عرض كل منتجات القسم"
   },
   "cart": {
     "title": "عربة التسوق",

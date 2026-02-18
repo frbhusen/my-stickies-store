@@ -157,7 +157,9 @@ const Products = () => {
           ).map(category => {
             const categoryProducts = products.filter(product => product.category?.slug === category.slug);
             if (categoryProducts.length === 0) return null;
-            const visibleProducts = categoryProducts.slice(0, maxPerCategory);
+            const visibleProducts = selectedCategory
+              ? categoryProducts
+              : categoryProducts.slice(0, maxPerCategory);
 
             return (
               <section key={category._id} className="category-section">
@@ -202,6 +204,20 @@ const Products = () => {
                     </div>
                   ))}
                 </div>
+                {!selectedCategory && categoryProducts.length > maxPerCategory && (
+                  <div className="category-footer">
+                    <button
+                      type="button"
+                      className="view-all-btn"
+                      onClick={() => {
+                        setSelectedCategory(category.slug);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      {t('products.viewAll')}
+                    </button>
+                  </div>
+                )}
               </section>
             );
           })}

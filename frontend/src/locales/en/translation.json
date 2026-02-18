@@ -31,7 +31,8 @@
     "allCategories": "All Categories",
     "loading": "Loading products...",
     "originalPrice": "Original",
-    "finalPrice": "Price"
+    "finalPrice": "Price",
+    "viewAll": "View All"
   },
   "cart": {
     "title": "Shopping Cart",

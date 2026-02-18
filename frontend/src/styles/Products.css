@@ -67,6 +67,29 @@
   margin: 0;
 }
 
+.category-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.view-all-btn {
+  padding: 0.7rem 1.5rem;
+  background: transparent;
+  color: var(--color-dark);
+  border: 2px solid var(--color-medium);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.view-all-btn:hover {
+  background: var(--color-medium);
+  color: white;
+  transform: translateY(-2px);
+}
+
 .product-card {
   background: white;
   border-radius: 12px;
