@@ -64,6 +64,8 @@
     "subscribe": "اشترك الآن",
     "searchPlaceholder": "ابحث عن الخدمات الرقمية...",
     "allCategories": "جميع الأقسام",
-    "loading": "جاري تحميل الخدمات الرقمية..."
+    "loading": "جاري تحميل الخدمات الرقمية...",
+    "backToCategories": "العودة إلى الأقسام",
+    "servicesCount": "خدمة"
   }
 }

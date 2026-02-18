@@ -64,6 +64,8 @@
     "subscribe": "Subscribe Now",
     "searchPlaceholder": "Search e-services...",
     "allCategories": "All Categories",
-    "loading": "Loading e-services..."
+    "loading": "Loading e-services...",
+    "backToCategories": "Back to Categories",
+    "servicesCount": "services"
   }
 }
