@@ -13,6 +13,11 @@ const categorySchema = new mongoose.Schema({
   defaultPrice: {
     type: Number
   },
+  type: {
+    type: String,
+    enum: ['product', 'eservice'],
+    default: 'product'
+  },
   defaultDiscount: {
     type: Number,
     default: 0

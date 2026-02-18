@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
-import '../styles/Products.css';
+import '../styles/EServices.css';
 
-const Products = () => {
+const EServices = () => {
   const { t } = useTranslation();
-  const [products, setProducts] = useState([]);
+  const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const maxPerCategory = 4;
 
   const extractDriveId = (url) => {
     if (!url) return '';
@@ -18,10 +16,8 @@ const Products = () => {
     try {
       const u = new URL(trimmed);
       if (u.hostname.includes('drive.google.com')) {
-        // Prefer explicit id param anywhere in query
         const idParam = u.searchParams.get('id');
         if (idParam) return idParam;
-        // Fallback to /file/d/<id>/ path
         const fileMatch = trimmed.match(/\/file\/d\/([^/]+)/);
         if (fileMatch && fileMatch[1]) return fileMatch[1];
       } else if (u.hostname.includes('lh3.googleusercontent.com')) {
@@ -29,7 +25,6 @@ const Products = () => {
         if (lhMatch && lhMatch[1]) return lhMatch[1];
       }
     } catch (_) {
-      // Non-URL string: try regex patterns
       const fileMatch = trimmed.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/]+)\//);
       const idParamMatch = trimmed.match(/id=([^&]+)/);
       if (fileMatch?.[1]) return fileMatch[1];
@@ -75,128 +70,110 @@ const Products = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await api.get('/categories', { params: { type: 'product' } });
+      const response = await api.get('/categories?type=eservice');
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
   }, []);
 
-  const fetchProducts = useCallback(async () => {
+  const fetchServices = useCallback(async () => {
     setLoading(true);
     try {
-      let params = {};
-      params.type = 'product';
-      if (selectedCategory) params.category = selectedCategory;
+      let params = { type: 'eservice' };
       if (searchTerm) params.search = searchTerm;
 
       const response = await api.get('/products', { params });
-      setProducts(response.data);
+      setServices(response.data);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching services:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory, searchTerm]);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchCategories();
-    fetchProducts();
-  }, [fetchCategories, fetchProducts]);
+    fetchServices();
+  }, [fetchCategories, fetchServices]);
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = (service) => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItem = cart.find(item => item._id === product._id);
+    const existingItem = cart.find(item => item._id === service._id);
 
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
-      cart.push({ ...product, quantity: 1 });
+      cart.push({ ...service, quantity: 1 });
     }
 
     localStorage.setItem('cart', JSON.stringify(cart));
-    alert(`${product.name} ${t('products.added')}`);
+    alert(`${service.name} ${t('eservices.added')}`);
   };
 
   return (
-    <div className="products-container">
-      <div className="products-header">
-          <h1>{t('products.title')}</h1>
+    <div className="eservices-container">
+      <div className="eservices-header">
+        <h1>{t('eservices.title')}</h1>
+        <p className="eservices-subtitle">{t('eservices.subtitle')}</p>
         <div className="search-filter-section">
           <input
             type="text"
-              placeholder={t('products.searchPlaceholder')}
+            placeholder={t('eservices.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="category-select"
-          >
-              <option value="">{t('products.allCategories')}</option>
-            {categories.map(category => (
-              <option key={category._id} value={category.slug}>
-                {category.name}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
       {loading ? (
-        <div className="loading-spinner">{t('products.loading')}</div>
-      ) : products.length === 0 ? (
-        <div className="no-products">{t('products.noProducts')}</div>
+        <div className="loading-spinner">{t('eservices.loading')}</div>
+      ) : services.length === 0 ? (
+        <div className="no-services">{t('eservices.noServices')}</div>
       ) : (
         <div className="category-sections">
-          {(selectedCategory
-            ? categories.filter(category => category.slug === selectedCategory)
-            : categories
-          ).map(category => {
-            const categoryProducts = products.filter(product => product.category?.slug === category.slug);
-            if (categoryProducts.length === 0) return null;
-            const visibleProducts = categoryProducts.slice(0, maxPerCategory);
-
+          {categories.map(category => {
+            const categoryServices = services.filter(service => service.category?.slug === category.slug);
+            if (categoryServices.length === 0) return null;
             return (
               <section key={category._id} className="category-section">
                 <div className="category-header">
                   <h2>{category.name}</h2>
                 </div>
-                <div className="products-grid">
-                  {visibleProducts.map(product => (
-                    <div key={product._id} className="product-card">
-                      <div className="product-image-wrapper">
+                <div className="eservices-grid">
+                  {categoryServices.map(service => (
+                    <div key={service._id} className="service-card">
+                      <div className="service-image-wrapper">
                         <img
-                          src={primaryImageUrl(product.image)}
-                          alt={product.name}
-                          className="product-image"
+                          src={primaryImageUrl(service.image)}
+                          alt={service.name}
+                          className="service-image"
                           data-fallback-idx="0"
-                          onError={(e) => handleImageError(e, product.image)}
+                          onError={(e) => handleImageError(e, service.image)}
                         />
-                        {product.discount > 0 && (
-                          <div className="discount-badge">-{product.discount}%</div>
+                        {service.discount > 0 && (
+                          <div className="discount-badge">-{service.discount}%</div>
                         )}
                       </div>
-                      <div className="product-content">
-                        <h3>{product.name}</h3>
-                        <p className="product-description">{product.description}</p>
-                        <div className="product-pricing">
-                          {product.discount > 0 ? (
+                      <div className="service-content">
+                        <h3>{service.name}</h3>
+                        <p className="service-description">{service.description}</p>
+                        <div className="service-pricing">
+                          {service.discount > 0 ? (
                             <>
-                              <span className="original-price">SYP {product.price.toFixed(2)}</span>
-                              <span className="final-price">SYP {product.finalPrice.toFixed(2)}</span>
+                              <span className="original-price">SYP {service.price.toFixed(2)}</span>
+                              <span className="final-price">SYP {service.finalPrice.toFixed(2)}</span>
                             </>
                           ) : (
-                            <span className="final-price">SYP {product.price.toFixed(2)}</span>
+                            <span className="final-price">SYP {service.price.toFixed(2)}</span>
                           )}
                         </div>
                         <button
-                          onClick={() => handleAddToCart(product)}
+                          onClick={() => handleAddToCart(service)}
                           className="add-to-cart-btn"
                         >
-                          {t('products.addToCart')}
+                          {t('eservices.subscribe')}
                         </button>
                       </div>
                     </div>
@@ -211,4 +188,4 @@ const Products = () => {
   );
 };
 
-export default Products;
+export default EServices;

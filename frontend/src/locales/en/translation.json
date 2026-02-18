@@ -3,6 +3,7 @@
     "logo": "🎨 My Stickies",
     "home": "Home",
     "products": "Products",
+    "eservices": "E-Services",
     "cart": "Cart",
     "admin": "Admin",
     "language": "العربية"
@@ -53,5 +54,15 @@
     "successThanks": "Thank you for your order. We will contact you soon to confirm.",
     "successCheckEmail": "Check your email for order confirmation.",
     "remove": "Remove"
+  },
+  "eservices": {
+    "title": "E-Services",
+    "subtitle": "Browse our digital services: app subscriptions, logo design, and more",
+    "noServices": "No e-services found",
+    "added": "added to cart!",
+    "subscribe": "Subscribe Now",
+    "searchPlaceholder": "Search e-services...",
+    "allCategories": "All Categories",
+    "loading": "Loading e-services..."
   }
 }

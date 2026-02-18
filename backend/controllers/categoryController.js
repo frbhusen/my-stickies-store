@@ -3,7 +3,16 @@ const Product = require('../models/Product');
 
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
+    const { type } = req.query;
+    const filter = {};
+    if (type) {
+      if (type === 'product') {
+        filter.$or = [{ type: 'product' }, { type: { $exists: false } }, { type: null }];
+      } else {
+        filter.type = type;
+      }
+    }
+    const categories = await Category.find(filter);
     res.json(categories);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -12,7 +21,7 @@ exports.getAllCategories = async (req, res) => {
 
 exports.createCategory = async (req, res) => {
   try {
-    const { name, description, defaultPrice, defaultDiscount } = req.body;
+    const { name, description, defaultPrice, defaultDiscount, type } = req.body;
     const slug = name.toLowerCase().replace(/\s+/g, '-');
 
     const category = new Category({
@@ -20,6 +29,7 @@ exports.createCategory = async (req, res) => {
       description,
       defaultPrice,
       defaultDiscount,
+      type: type || 'product',
       slug
     });
     await category.save();
@@ -32,12 +42,17 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
-    const { name, description, defaultPrice, defaultDiscount, applyDefaultsToProducts } = req.body;
+    const { name, description, defaultPrice, defaultDiscount, applyDefaultsToProducts, type } = req.body;
     const slug = name.toLowerCase().replace(/\s+/g, '-');
+
+    const update = { name, description, defaultPrice, defaultDiscount, slug };
+    if (typeof type !== 'undefined') {
+      update.type = type;
+    }
 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
-      { name, description, defaultPrice, defaultDiscount, slug },
+      update,
       { new: true }
     );
 

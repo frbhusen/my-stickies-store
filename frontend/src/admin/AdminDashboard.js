@@ -41,6 +41,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
     name: '',
     description: '',
     price: '',
+    type: 'product',
     discount: '',
     image: '',
     category: ''
@@ -50,9 +51,12 @@ const AdminDashboard = ({ isAuthenticated }) => {
     name: '',
     description: '',
     defaultPrice: '',
+    type: 'product',
     defaultDiscount: '',
     applyDefaultsToProducts: false
   });
+
+  const isEservicesTab = activeTab === 'eservices';
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -60,10 +64,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, [isAuthenticated, navigate]);
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (type) => {
     setLoading(true);
     try {
-      const response = await api.get('/products');
+      const params = type ? { type } : {};
+      const response = await api.get('/products', { params });
       const normalized = (response.data || []).map(p => ({
         ...p,
         image: normalizeImageUrl(p.image) || logo
@@ -76,9 +81,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, []);
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = useCallback(async (type) => {
     try {
-      const response = await api.get('/categories');
+      const params = type ? { type } : {};
+      const response = await api.get('/categories', { params });
       setCategories(response.data);
     } catch (error) {
       alert('Error fetching categories');
@@ -120,9 +126,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
   }, [categories]);
 
   useEffect(() => {
-    if (activeTab === 'products') {
-      fetchProducts();
-      fetchCategories();
+    if (activeTab === 'products' || activeTab === 'eservices') {
+      const type = activeTab === 'eservices' ? 'eservice' : 'product';
+      fetchProducts(type);
+      fetchCategories(type);
     } else if (activeTab === 'categories') {
       fetchCategories();
     } else if (activeTab === 'orders') {
@@ -130,12 +137,17 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, [activeTab, fetchCategories, fetchOrders, fetchProducts]);
 
+  useEffect(() => {
+    setSelectedProducts([]);
+  }, [activeTab]);
+
   const handleAddProduct = () => {
     setEditingProduct(null);
     setProductForm({
       name: '',
       description: '',
       price: '',
+      type: isEservicesTab ? 'eservice' : 'product',
       discount: '',
       image: '',
       category: ''
@@ -171,6 +183,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       discount: cat?.defaultDiscount || '',
       description: cat?.description || ''
     };
+    const resolvedType = cat?.type || (isEservicesTab ? 'eservice' : 'product');
     
     try {
       let successCount = 0;
@@ -179,10 +192,12 @@ const AdminDashboard = ({ isAuthenticated }) => {
       for (const url of urls) {
         const normalized = normalizeImageUrl(url);
         
+        const baseName = isEservicesTab ? 'Service' : 'Product';
         const productData = {
-          name: `Product ${index}`,
+          name: `${baseName} ${index}`,
           image: normalized,
           category: batchCategory,
+          type: resolvedType,
           ...defaults
         };
         
@@ -195,7 +210,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       setShowBatchForm(false);
       setBatchImages('');
       setBatchCategory('');
-      fetchProducts();
+      fetchProducts(resolvedType);
     } catch (error) {
       alert('Error adding products: ' + (error.response?.data?.message || error.message));
     }
@@ -207,6 +222,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       name: product.name,
       description: product.description,
       price: product.price,
+      type: product.type || 'product',
       discount: product.discount,
       image: normalizeImageUrl(product.image),
       category: product.category._id
@@ -216,8 +232,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+    const resolvedType = productForm.type || (isEservicesTab ? 'eservice' : 'product');
     const payload = {
       ...productForm,
+      type: resolvedType,
       image: normalizeImageUrl(productForm.image)
     };
     try {
@@ -227,7 +245,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
         await api.post('/products', payload);
       }
       setShowProductForm(false);
-      fetchProducts();
+      fetchProducts(resolvedType);
     } catch (error) {
       alert('Error saving product: ' + error.response?.data?.message);
     }
@@ -237,7 +255,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
         await api.delete(`/products/${id}`);
-        fetchProducts();
+        fetchProducts(isEservicesTab ? 'eservice' : 'product');
       } catch (error) {
         alert('Error deleting product');
       }
@@ -254,7 +272,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       try {
         await Promise.all(selectedProducts.map(id => api.delete(`/products/${id}`)));
         setSelectedProducts([]);
-        fetchProducts();
+        fetchProducts(isEservicesTab ? 'eservice' : 'product');
         alert(`Successfully deleted ${selectedProducts.length} product(s)`);
       } catch (error) {
         alert('Error deleting products: ' + (error.response?.data?.message || error.message));
@@ -280,7 +298,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', defaultPrice: '', defaultDiscount: '', applyDefaultsToProducts: false });
+    setCategoryForm({ name: '', description: '', defaultPrice: '', type: 'product', defaultDiscount: '', applyDefaultsToProducts: false });
     setShowCategoryForm(true);
   };
 
@@ -290,6 +308,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
       name: category.name,
       description: category.description || '',
       defaultPrice: category.defaultPrice ?? '',
+      type: category.type || 'product',
       defaultDiscount: category.defaultDiscount ?? '',
       applyDefaultsToProducts: false
     });
@@ -549,6 +568,12 @@ const AdminDashboard = ({ isAuthenticated }) => {
             📦 Products
           </button>
           <button
+            className={`nav-item ${activeTab === 'eservices' ? 'active' : ''}`}
+            onClick={() => setActiveTab('eservices')}
+          >
+            💻 E-Services
+          </button>
+          <button
             className={`nav-item ${activeTab === 'categories' ? 'active' : ''}`}
             onClick={() => setActiveTab('categories')}
           >
@@ -568,16 +593,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
       <main className="admin-content">
         {/* Products Section */}
-        {activeTab === 'products' && (
+        {(activeTab === 'products' || activeTab === 'eservices') && (
           <div className="tab-content">
             <div className="content-header">
-              <h2>Products Management</h2>
+              <h2>{isEservicesTab ? 'E-Services Management' : 'Products Management'}</h2>
               <div className="header-buttons">
                 <button className="btn-primary" onClick={handleAddProduct}>
-                  + Add Product
+                  {isEservicesTab ? '+ Add E-Service' : '+ Add Product'}
                 </button>
                 <button className="btn-secondary" onClick={handleBatchAdd}>
-                  📦 Batch Add
+                  {isEservicesTab ? '💻 Batch Add' : '📦 Batch Add'}
                 </button>
                 {selectedProducts.length > 0 && (
                   <button className="btn-delete" onClick={handleBatchDelete}>
@@ -589,7 +614,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
             {showBatchForm && (
               <form className="form-card" onSubmit={handleSaveBatchProducts}>
-                <h3>Batch Add Products</h3>
+                <h3>{isEservicesTab ? 'Batch Add E-Services' : 'Batch Add Products'}</h3>
                 <div className="form-group">
                   <label>Category</label>
                   <select
@@ -610,13 +635,13 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     value={batchImages}
                     onChange={(e) => setBatchImages(e.target.value)}
                     rows="10"
-                    placeholder="Paste Google Drive image URLs here, one per line:\nhttps://drive.google.com/file/d/.../view\nhttps://drive.google.com/file/d/.../view\n...\n\nProducts will be named 'Product 1', 'Product 2', etc. You can rename them after creation."
+                    placeholder={isEservicesTab ? "Paste Google Drive image URLs here, one per line:\nhttps://drive.google.com/file/d/.../view\nhttps://drive.google.com/file/d/.../view\n...\n\nServices will be named 'Service 1', 'Service 2', etc. You can rename them after creation." : "Paste Google Drive image URLs here, one per line:\nhttps://drive.google.com/file/d/.../view\nhttps://drive.google.com/file/d/.../view\n...\n\nProducts will be named 'Product 1', 'Product 2', etc. You can rename them after creation."}
                     required
                     style={{fontFamily: 'monospace', fontSize: '13px'}}
                   />
                 </div>
                 <div className="form-buttons">
-                  <button type="submit" className="btn-primary">Add All Products</button>
+                  <button type="submit" className="btn-primary">{isEservicesTab ? 'Add All Services' : 'Add All Products'}</button>
                   <button
                     type="button"
                     className="btn-secondary"
@@ -630,9 +655,9 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
             {showProductForm && (
               <form className="form-card" onSubmit={handleSaveProduct}>
-                <h3>{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
+                <h3>{editingProduct ? (isEservicesTab ? 'Edit E-Service' : 'Edit Product') : (isEservicesTab ? 'Add New E-Service' : 'Add New Product')}</h3>
                 <div className="form-group">
-                  <label>Product Name</label>
+                  <label>{isEservicesTab ? 'Service Name' : 'Product Name'}</label>
                   <input
                     type="text"
                     value={productForm.name}
@@ -646,6 +671,17 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     value={productForm.description}
                     onChange={(e) => setProductForm({...productForm, description: e.target.value})}
                   />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    value={productForm.type}
+                    onChange={(e) => setProductForm({...productForm, type: e.target.value})}
+                    disabled={activeTab === 'products' || activeTab === 'eservices'}
+                  >
+                    <option value="product">Physical Product</option>
+                    <option value="eservice">E-Service</option>
+                  </select>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
@@ -685,9 +721,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     required
                   >
                     <option value="">Select Category</option>
-                    {categories.map(cat => (
+                    {categories
+                      .filter(cat => !productForm.type || cat.type === productForm.type)
+                      .map(cat => (
                       <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
+                      ))}
                   </select>
                 </div>
                 <div className="form-buttons">
@@ -704,7 +742,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
             )}
 
             {loading ? (
-              <p>Loading products...</p>
+              <p>{isEservicesTab ? 'Loading e-services...' : 'Loading products...'}</p>
             ) : (
               <div className="products-table">
                 <table>
@@ -805,6 +843,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
                   />
                 </div>
+                <div className="form-group">
+                  <label>Category Type</label>
+                  <select
+                    value={categoryForm.type}
+                    onChange={(e) => setCategoryForm({...categoryForm, type: e.target.value})}
+                  >
+                    <option value="product">Physical Products</option>
+                    <option value="eservice">E-Services</option>
+                  </select>
+                </div>
                 <div className="form-row">
                   <div className="form-group">
                     <label>Category Price (optional)</label>
@@ -855,6 +903,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 <div key={category._id} className="category-card">
                   <h3>{category.name}</h3>
                   <p>{category.description}</p>
+                  <p className="meta">Type: {category.type === 'eservice' ? 'E-Service' : 'Product'}</p>
                   <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
                   <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
                   <div className="card-actions">

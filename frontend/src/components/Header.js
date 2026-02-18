@@ -21,6 +21,7 @@ const Header = ({ cartCount }) => {
         <nav className="nav">
           <a href="/" className="nav-link">{t('header.home')}</a>
           <a href="/products" className="nav-link">{t('header.products')}</a>
+          <a href="/e-services" className="nav-link">{t('header.eservices')}</a>
           <a href="/cart" className="nav-link cart-link">
             {t('header.cart')}
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}

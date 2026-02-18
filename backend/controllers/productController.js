@@ -3,8 +3,17 @@ const Category = require('../models/Category');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, type } = req.query;
     let filter = { active: true };
+    const andFilters = [];
+
+    if (type) {
+      if (type === 'product') {
+        andFilters.push({ $or: [{ type: 'product' }, { type: { $exists: false } }, { type: null }] });
+      } else {
+        andFilters.push({ type });
+      }
+    }
 
     if (category) {
       const categoryDoc = await Category.findOne({ slug: category });
@@ -14,10 +23,16 @@ exports.getAllProducts = async (req, res) => {
     }
 
     if (search) {
-      filter.$or = [
+      andFilters.push({
+        $or: [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } }
-      ];
+        ]
+      });
+    }
+
+    if (andFilters.length > 0) {
+      filter.$and = andFilters;
     }
 
     const products = await Product.find(filter).populate('category');
@@ -41,7 +56,7 @@ exports.getProductById = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
-    const { name, description, price, discount, image, category } = req.body;
+    const { name, description, price, discount, image, category, type } = req.body;
     const categoryDoc = await Category.findById(category);
     if (!categoryDoc) {
       return res.status(400).json({ message: 'Invalid category' });
@@ -55,13 +70,16 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ message: 'Price is required (set on product or category)' });
     }
 
+    const resolvedType = type || categoryDoc.type || 'product';
+
     const product = new Product({
       name,
       description: resolvedDescription,
       price: resolvedPrice,
       discount: resolvedDiscount,
       image,
-      category
+      category,
+      type: resolvedType
     });
 
     await product.save();
@@ -75,7 +93,7 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
-    const { name, description, price, discount, image, category, active } = req.body;
+    const { name, description, price, discount, image, category, active, type } = req.body;
 
     const update = { updatedAt: Date.now() };
     if (typeof name !== 'undefined') update.name = name;
@@ -85,6 +103,7 @@ exports.updateProduct = async (req, res) => {
     if (typeof image !== 'undefined') update.image = image;
     if (typeof category !== 'undefined') update.category = category;
     if (typeof active !== 'undefined') update.active = active;
+    if (typeof type !== 'undefined') update.type = type;
 
     // If price/description are not provided but category has defaults, fill them
     if ((typeof update.price === 'undefined' || update.price === '') && category) {
@@ -97,6 +116,9 @@ exports.updateProduct = async (req, res) => {
       }
       if (categoryDoc && typeof update.description === 'undefined' && categoryDoc.description) {
         update.description = categoryDoc.description;
+      }
+      if (categoryDoc && typeof update.type === 'undefined' && categoryDoc.type) {
+        update.type = categoryDoc.type;
       }
     }
 

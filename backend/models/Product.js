@@ -11,6 +11,11 @@ const productSchema = new mongoose.Schema({
   price: {
     type: Number
   },
+  type: {
+    type: String,
+    enum: ['product', 'eservice'],
+    default: 'product'
+  },
   discount: {
     type: Number,
     default: 0

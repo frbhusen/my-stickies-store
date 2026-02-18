@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import Header from './components/Header';
 import Home from './components/Home';
 import Products from './components/Products';
+import EServices from './components/EServices';
 import Cart from './components/Cart';
 import AdminLogin from './admin/AdminLogin';
 import AdminDashboard from './admin/AdminDashboard';
@@ -88,6 +89,10 @@ function AppRoutes() {
           <Route path="/products" element={<>
             <Header cartCount={cartCount} />
             <Products />
+          </>} />
+          <Route path="/e-services" element={<>
+            <Header cartCount={cartCount} />
+            <EServices />
           </>} />
           <Route path="/cart" element={<>
             <Header cartCount={cartCount} />
