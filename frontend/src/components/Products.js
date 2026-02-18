@@ -10,7 +10,7 @@ const Products = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const maxPerCategory = 4;
+  const maxPerCategory = 3;
 
   const extractDriveId = (url) => {
     if (!url) return '';
