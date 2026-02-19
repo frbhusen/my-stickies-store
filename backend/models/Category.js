@@ -25,6 +25,10 @@ const categorySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  parentCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category'
+  },
   slug: {
     type: String,
     unique: true,

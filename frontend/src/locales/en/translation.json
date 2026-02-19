@@ -57,15 +57,18 @@
     "remove": "Remove"
   },
   "eservices": {
-    "title": "E-Services",
-    "subtitle": "Browse our digital services: app subscriptions, logo design, and more",
-    "noServices": "No e-services found",
-    "added": "added to cart!",
-    "subscribe": "Subscribe Now",
-    "searchPlaceholder": "Search e-services...",
-    "allCategories": "All Categories",
-    "loading": "Loading e-services...",
-    "backToCategories": "Back to Categories",
-    "servicesCount": "services"
+    "title": "الخدمات الرقمية",
+    "subtitle": "استكشف خدماتنا الرقمية: اشتراكات التطبيقات، تصميم الشعارات، والمزيد",
+    "noServices": "لم يتم العثور على خدمات رقمية",
+    "added": "أضيفت إلى السلة!",
+    "subscribe": "اشترك الآن",
+    "searchPlaceholder": "ابحث عن الخدمات الرقمية...",
+    "allCategories": "جميع الأقسام",
+    "loading": "جاري تحميل الخدمات الرقمية...",
+    "backToCategories": "العودة إلى الأقسام",
+    "backToSubcategories": "العودة إلى الأقسام الفرعية",
+    "servicesCount": "خدمة",
+    "subcategoriesCount": "قسم فرعي",
+    "noSubcategories": "لا توجد أقسام فرعية"
   }
 }

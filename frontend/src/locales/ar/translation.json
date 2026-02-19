@@ -66,6 +66,9 @@
     "allCategories": "جميع الأقسام",
     "loading": "جاري تحميل الخدمات الرقمية...",
     "backToCategories": "العودة إلى الأقسام",
-    "servicesCount": "خدمة"
+    "backToSubcategories": "العودة إلى الأقسام الفرعية",
+    "servicesCount": "خدمة",
+    "subcategoriesCount": "قسم فرعي",
+    "noSubcategories": "لا توجد أقسام فرعية"
   }
 }
