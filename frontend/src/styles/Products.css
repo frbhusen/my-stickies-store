@@ -108,13 +108,13 @@
 .product-image-wrapper {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 39 / 55;
+  aspect-ratio: 40   / 56;
   max-height: 480px;
   background: #f7f7f7; /* neutral background so broken images don’t show blue */
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  margin: 0 auto;
 }
 
 .product-image {
@@ -276,7 +276,9 @@
   }
 
   .product-image-wrapper {
-    height: 180px;
+    height: 240px;
+    max-height: none;
+    width: 100%;
   }
 }
 
