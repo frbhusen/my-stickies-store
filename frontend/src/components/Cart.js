@@ -14,6 +14,24 @@ const Cart = () => {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currency, setCurrency] = useState('SYP');
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await api.get('/settings');
+        setCurrency(response.data?.currency || 'SYP');
+      } catch (error) {
+        setCurrency('SYP');
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const formatPrice = (value) => {
+    const amount = Number(value || 0).toFixed(2);
+    return currency === 'USD' ? `$${amount}` : `SYP ${amount}`;
+  };
 
   const extractDriveId = (url) => {
     if (!url) return '';
@@ -180,7 +198,7 @@ const Cart = () => {
                 <div className="item-details">
                   <h4>{item.name}</h4>
                   <p className="item-price">
-                    SYP {(item.finalPrice || item.price * (1 - (item.discount || 0) / 100)).toFixed(2)}
+                    {formatPrice(item.finalPrice || item.price * (1 - (item.discount || 0) / 100))}
                   </p>
                 </div>
                 <div className="item-quantity">
@@ -194,7 +212,7 @@ const Cart = () => {
                   <button onClick={() => updateQuantity(item._id, item.quantity + 1)}>+</button>
                 </div>
                 <div className="item-total">
-                  SYP {((item.finalPrice || item.price * (1 - (item.discount || 0) / 100)) * item.quantity).toFixed(2)}
+                  {formatPrice(((item.finalPrice || item.price * (1 - (item.discount || 0) / 100)) * item.quantity))}
                 </div>
                 <button
                   onClick={() => removeFromCart(item._id)}
@@ -210,7 +228,7 @@ const Cart = () => {
             <h3>{t('cart.summaryTitle')}</h3>
             <div className="summary-row">
               <span>{t('cart.subtotal')}</span>
-              <span>SYP {calculateTotal().toFixed(2)}</span>
+              <span>{formatPrice(calculateTotal())}</span>
             </div>
             <div className="summary-row">
               <span>{t('cart.shipping')}</span>
@@ -218,7 +236,7 @@ const Cart = () => {
             </div>
             <div className="summary-total">
               <span>{t('cart.total')}</span>
-              <span>SYP {calculateTotal().toFixed(2)}</span>
+              <span>{formatPrice(calculateTotal())}</span>
             </div>
           </div>
         </div>

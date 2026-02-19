@@ -11,6 +11,7 @@ const EServices = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubCategory, setSelectedSubCategory] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currency, setCurrency] = useState('SYP');
 
   const extractDriveId = (url) => {
     if (!url) return '';
@@ -108,6 +109,23 @@ const EServices = () => {
     fetchSubCategories();
   }, [fetchCategories, fetchServices, fetchSubCategories]);
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await api.get('/settings');
+        setCurrency(response.data?.currency || 'SYP');
+      } catch (error) {
+        setCurrency('SYP');
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const formatPrice = (value) => {
+    const amount = Number(value || 0).toFixed(2);
+    return currency === 'USD' ? `$${amount}` : `SYP ${amount}`;
+  };
+
   const handleAddToCart = (service) => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
     const existingItem = cart.find(item => item._id === service._id);
@@ -203,11 +221,11 @@ const EServices = () => {
                       <div className="service-pricing">
                         {service.discount > 0 ? (
                           <>
-                            <span className="original-price">SYP {service.price.toFixed(2)}</span>
-                            <span className="final-price">SYP {service.finalPrice.toFixed(2)}</span>
+                            <span className="original-price">{formatPrice(service.price)}</span>
+                            <span className="final-price">{formatPrice(service.finalPrice)}</span>
                           </>
                         ) : (
-                          <span className="final-price">SYP {service.price.toFixed(2)}</span>
+                          <span className="final-price">{formatPrice(service.price)}</span>
                         )}
                       </div>
                       <button

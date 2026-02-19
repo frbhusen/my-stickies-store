@@ -40,6 +40,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [batchCategory, setBatchCategory] = useState('');
   const [batchSubCategory, setBatchSubCategory] = useState('');
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [settingsCurrency, setSettingsCurrency] = useState('SYP');
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -125,6 +127,18 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, []);
 
+  const fetchSettings = useCallback(async () => {
+    setSettingsLoading(true);
+    try {
+      const response = await api.get('/settings');
+      setSettingsCurrency(response.data?.currency || 'SYP');
+    } catch (error) {
+      alert('Error fetching settings');
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, []);
+
   const handleImageUrlChange = (url) => {
     const normalized = normalizeImageUrl(url);
     setProductForm({...productForm, image: normalized});
@@ -157,10 +171,12 @@ const AdminDashboard = ({ isAuthenticated }) => {
       }
     } else if (activeTab === 'categories') {
       fetchCategories();
+    } else if (activeTab === 'settings') {
+      fetchSettings();
     } else if (activeTab === 'orders') {
       fetchOrders();
     }
-  }, [activeTab, fetchCategories, fetchOrders, fetchProducts, fetchSubCategories]);
+  }, [activeTab, fetchCategories, fetchOrders, fetchProducts, fetchSubCategories, fetchSettings]);
 
   useEffect(() => {
     setSelectedProducts([]);
@@ -398,6 +414,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
       fetchSubCategories();
     } catch (error) {
       alert('Error deleting sub-category');
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put('/settings', { currency: settingsCurrency });
+      alert('Settings saved');
+    } catch (error) {
+      alert('Error saving settings');
     }
   };
 
@@ -952,6 +978,12 @@ const AdminDashboard = ({ isAuthenticated }) => {
           >
             📋 Orders
           </button>
+          <button
+            className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            ⚙️ Settings
+          </button>
           <button className="nav-item logout-btn" onClick={handleLogout}>
             🚪 Logout
           </button>
@@ -1315,6 +1347,33 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Settings Section */}
+        {activeTab === 'settings' && (
+          <div className="tab-content">
+            <div className="content-header">
+              <h2>Settings</h2>
+            </div>
+            <form className="form-card" onSubmit={handleSaveSettings}>
+              <div className="form-group">
+                <label>Store Currency</label>
+                <select
+                  value={settingsCurrency}
+                  onChange={(e) => setSettingsCurrency(e.target.value)}
+                  disabled={settingsLoading}
+                >
+                  <option value="SYP">SYP</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+              <div className="form-buttons">
+                <button type="submit" className="btn-primary" disabled={settingsLoading}>
+                  Save
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </main>
