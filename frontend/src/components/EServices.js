@@ -121,9 +121,10 @@ const EServices = () => {
     loadSettings();
   }, []);
 
-  const formatPrice = (value) => {
+  const formatPrice = (value, itemCurrency = null) => {
     const amount = Number(value || 0).toFixed(2);
-    return currency === 'USD' ? `$${amount}` : `SYP ${amount}`;
+    const displayCurrency = itemCurrency || currency;
+    return displayCurrency === 'USD' ? `$${amount}` : `SYP ${amount}`;
   };
 
   const handleAddToCart = (service) => {
@@ -221,11 +222,11 @@ const EServices = () => {
                       <div className="service-pricing">
                         {service.discount > 0 ? (
                           <>
-                            <span className="original-price">{formatPrice(service.price)}</span>
-                            <span className="final-price">{formatPrice(service.finalPrice)}</span>
+                            <span className="original-price">{formatPrice(service.price, service.currency)}</span>
+                            <span className="final-price">{formatPrice(service.finalPrice, service.currency)}</span>
                           </>
                         ) : (
-                          <span className="final-price">{formatPrice(service.price)}</span>
+                          <span className="final-price">{formatPrice(service.price, service.currency)}</span>
                         )}
                       </div>
                       <button

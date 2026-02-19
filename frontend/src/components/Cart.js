@@ -28,9 +28,10 @@ const Cart = () => {
     loadSettings();
   }, []);
 
-  const formatPrice = (value) => {
+  const formatPrice = (value, itemCurrency = null) => {
     const amount = Number(value || 0).toFixed(2);
-    return currency === 'USD' ? `$${amount}` : `SYP ${amount}`;
+    const displayCurrency = itemCurrency || currency;
+    return displayCurrency === 'USD' ? `$${amount}` : `SYP ${amount}`;
   };
 
   const extractDriveId = (url) => {
@@ -198,7 +199,7 @@ const Cart = () => {
                 <div className="item-details">
                   <h4>{item.name}</h4>
                   <p className="item-price">
-                    {formatPrice(item.finalPrice || item.price * (1 - (item.discount || 0) / 100))}
+                    {formatPrice(item.finalPrice || item.price * (1 - (item.discount || 0) / 100), item.currency)}
                   </p>
                 </div>
                 <div className="item-quantity">
@@ -212,7 +213,7 @@ const Cart = () => {
                   <button onClick={() => updateQuantity(item._id, item.quantity + 1)}>+</button>
                 </div>
                 <div className="item-total">
-                  {formatPrice(((item.finalPrice || item.price * (1 - (item.discount || 0) / 100)) * item.quantity))}
+                  {formatPrice(((item.finalPrice || item.price * (1 - (item.discount || 0) / 100)) * item.quantity), item.currency)}
                 </div>
                 <button
                   onClick={() => removeFromCart(item._id)}

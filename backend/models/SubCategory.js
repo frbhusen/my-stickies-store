@@ -27,6 +27,11 @@ const subCategorySchema = new mongoose.Schema({
     unique: true,
     lowercase: true
   },
+  currency: {
+    type: String,
+    enum: ['SYP', 'USD', null],
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -117,9 +117,10 @@ const Products = () => {
     loadSettings();
   }, []);
 
-  const formatPrice = (value) => {
+  const formatPrice = (value, itemCurrency = null) => {
     const amount = Number(value || 0).toFixed(2);
-    return currency === 'USD' ? `$${amount}` : `SYP ${amount}`;
+    const displayCurrency = itemCurrency || currency;
+    return displayCurrency === 'USD' ? `$${amount}` : `SYP ${amount}`;
   };
 
   const handleAddToCart = (product) => {
@@ -205,11 +206,11 @@ const Products = () => {
                         <div className="product-pricing">
                           {product.discount > 0 ? (
                             <>
-                              <span className="original-price">{formatPrice(product.price)}</span>
-                              <span className="final-price">{formatPrice(product.finalPrice)}</span>
+                              <span className="original-price">{formatPrice(product.price, product.currency)}</span>
+                              <span className="final-price">{formatPrice(product.finalPrice, product.currency)}</span>
                             </>
                           ) : (
-                            <span className="final-price">{formatPrice(product.price)}</span>
+                            <span className="final-price">{formatPrice(product.price, product.currency)}</span>
                           )}
                         </div>
                         <button

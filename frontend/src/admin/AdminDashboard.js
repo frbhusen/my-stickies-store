@@ -51,14 +51,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
     discount: '',
     image: '',
     category: '',
-    subCategory: ''
+    subCategory: '',
+    currency: null
   });
 
   const [subCategoryForm, setSubCategoryForm] = useState({
     name: '',
     description: '',
     image: '',
-    category: ''
+    category: '',
+    currency: null
   });
 
   const [categoryForm, setCategoryForm] = useState({
@@ -68,7 +70,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
     defaultPrice: '',
     type: 'product',
     defaultDiscount: '',
-    applyDefaultsToProducts: false
+    applyDefaultsToProducts: false,
+    currency: null
   });
 
   const isEservicesTab = activeTab === 'eservices';
@@ -279,7 +282,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       discount: product.discount,
       image: normalizeImageUrl(product.image),
       category: product.category?._id || '',
-      subCategory: product.subCategory?._id || ''
+      subCategory: product.subCategory?._id || '',
+      currency: product.currency || null
     });
     setShowProductForm(false);
     setInlineEditProductId(product._id);
@@ -382,7 +386,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       name: subCategory.name,
       description: subCategory.description || '',
       image: subCategory.image || '',
-      category: subCategory.category?._id || ''
+      category: subCategory.category?._id || '',
+      currency: subCategory.currency || null
     });
     setShowSubCategoryForm(true);
   };
@@ -436,7 +441,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       defaultPrice: category.defaultPrice ?? '',
       type: category.type || 'product',
       defaultDiscount: category.defaultDiscount ?? '',
-      applyDefaultsToProducts: false
+      applyDefaultsToProducts: false,
+      currency: category.currency || null
     });
     setShowCategoryForm(true);
   };
@@ -793,6 +799,17 @@ const AdminDashboard = ({ isAuthenticated }) => {
           </select>
         </div>
       )}
+      <div className="form-group">
+        <label>Currency Override (optional)</label>
+        <select
+          value={productForm.currency || ''}
+          onChange={(e) => setProductForm({...productForm, currency: e.target.value || null})}
+        >
+          <option value="">Use Global Setting</option>
+          <option value="SYP">SYP</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
       <div className="form-buttons">
         <button type="submit" className="btn-primary">Save</button>
         <button
@@ -876,6 +893,17 @@ const AdminDashboard = ({ isAuthenticated }) => {
           </label>
         </div>
       )}
+      <div className="form-group">
+        <label>Currency Override (optional)</label>
+        <select
+          value={categoryForm.currency || ''}
+          onChange={(e) => setCategoryForm({...categoryForm, currency: e.target.value || null})}
+        >
+          <option value="">Use Global Setting</option>
+          <option value="SYP">SYP</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
       <div className="form-buttons">
         <button type="submit" className="btn-primary">Save</button>
         <button
@@ -929,6 +957,17 @@ const AdminDashboard = ({ isAuthenticated }) => {
           onChange={(e) => setSubCategoryForm({...subCategoryForm, image: e.target.value})}
           placeholder="Paste Google Drive image URL"
         />
+      </div>
+      <div className="form-group">
+        <label>Currency Override (optional)</label>
+        <select
+          value={subCategoryForm.currency || ''}
+          onChange={(e) => setSubCategoryForm({...subCategoryForm, currency: e.target.value || null})}
+        >
+          <option value="">Use Global Setting</option>
+          <option value="SYP">SYP</option>
+          <option value="USD">USD</option>
+        </select>
       </div>
       <div className="form-buttons">
         <button type="submit" className="btn-primary">Save</button>
