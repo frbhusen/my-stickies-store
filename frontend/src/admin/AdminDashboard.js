@@ -33,6 +33,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [inlineEditProductId, setInlineEditProductId] = useState(null);
+  const [inlineEditCategoryId, setInlineEditCategoryId] = useState(null);
+  const [inlineEditSubCategoryId, setInlineEditSubCategoryId] = useState(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showSubCategoryForm, setShowSubCategoryForm] = useState(false);
   const [showBatchForm, setShowBatchForm] = useState(false);
@@ -42,6 +44,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [settingsCurrency, setSettingsCurrency] = useState('SYP');
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('');
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -183,6 +187,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   useEffect(() => {
     setSelectedProducts([]);
+    setProductSearchTerm('');
+    setProductCategoryFilter('');
   }, [activeTab]);
 
   const handleAddProduct = () => {
@@ -355,10 +361,14 @@ const AdminDashboard = ({ isAuthenticated }) => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedProducts.length === products.length) {
-      setSelectedProducts([]);
+    const filteredProducts = getFilteredProducts();
+    const filteredIds = filteredProducts.map(p => p._id);
+    const allFilteredSelected = filteredIds.every(id => selectedProducts.includes(id));
+    
+    if (allFilteredSelected) {
+      setSelectedProducts(selectedProducts.filter(id => !filteredIds.includes(id)));
     } else {
-      setSelectedProducts(products.map(p => p._id));
+      setSelectedProducts([...new Set([...selectedProducts, ...filteredIds])]);
     }
   };
 
@@ -389,7 +399,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       category: subCategory.category?._id || '',
       currency: subCategory.currency || null
     });
-    setShowSubCategoryForm(true);
+    setShowSubCategoryForm(false);
+    setInlineEditSubCategoryId(subCategory._id);
   };
 
   const handleSaveSubCategory = async (e) => {
@@ -405,6 +416,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
         await api.post('/subcategories', subCategoryForm);
       }
       setShowSubCategoryForm(false);
+      setInlineEditSubCategoryId(null);
       setEditingCategory(null);
       fetchSubCategories();
     } catch (error) {
@@ -444,7 +456,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       applyDefaultsToProducts: false,
       currency: category.currency || null
     });
-    setShowCategoryForm(true);
+    setShowCategoryForm(false);
+    setInlineEditCategoryId(category._id);
   };
 
   const handleSaveCategory = async (e) => {
@@ -457,6 +470,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
         await api.post('/categories', payload);
       }
       setShowCategoryForm(false);
+      setInlineEditCategoryId(null);
       const type = activeTab === 'eservices' ? 'eservice' : (activeTab === 'products' ? 'product' : undefined);
       fetchCategories(type);
     } catch (error) {
@@ -687,6 +701,20 @@ const AdminDashboard = ({ isAuthenticated }) => {
       e.target.setAttribute('data-fallback-idx', next);
       e.target.src = fallbacks[next];
     }
+  };
+
+  const getFilteredProducts = () => {
+    return products.filter(product => {
+      const matchesSearch = !productSearchTerm || 
+        product.name?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+        product.description?.toLowerCase().includes(productSearchTerm.toLowerCase());
+      
+      const matchesCategory = !productCategoryFilter || 
+        product.category?._id === productCategoryFilter ||
+        product.subCategory?._id === productCategoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
   };
 
   const renderProductForm = (onCancel) => (
@@ -1093,6 +1121,60 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
             {showProductForm && renderProductForm(() => setShowProductForm(false))}
 
+            {!loading && products.length > 0 && (
+              <div className="filter-section" style={{marginBottom: '1.5rem'}}>
+                <div className="search-filter-row" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group" style={{margin: 0}}>
+                    <input
+                      type="text"
+                      placeholder={`Search ${isEservicesTab ? 'services' : 'products'}...`}
+                      value={productSearchTerm}
+                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                      style={{
+                        padding: '0.8rem',
+                        border: '2px solid var(--color-light)',
+                        borderRadius: '8px',
+                        fontSize: '1rem',
+                        width: '100%'
+                      }}
+                    />
+                  </div>
+                  <div className="form-group" style={{margin: 0}}>
+                    <select
+                      value={productCategoryFilter}
+                      onChange={(e) => setProductCategoryFilter(e.target.value)}
+                      style={{
+                        padding: '0.8rem',
+                        border: '2px solid var(--color-light)',
+                        borderRadius: '8px',
+                        fontSize: '1rem',
+                        width: '100%'
+                      }}
+                    >
+                      <option value="">All {isEservicesTab ? 'Sub-Categories' : 'Categories'}</option>
+                      {isEservicesTab 
+                        ? subCategories.map(sub => (
+                            <option key={sub._id} value={sub._id}>{sub.name}</option>
+                          ))
+                        : categories.filter(cat => cat.type === 'product').map(cat => (
+                            <option key={cat._id} value={cat._id}>{cat.name}</option>
+                          ))
+                      }
+                    </select>
+                  </div>
+                </div>
+                {(productSearchTerm || productCategoryFilter) && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.9rem',
+                    color: '#666'
+                  }}>
+                    Showing {getFilteredProducts().length} of {products.length} {isEservicesTab ? 'services' : 'products'}
+                  </div>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <p>{isEservicesTab ? 'Loading e-services...' : 'Loading products...'}</p>
             ) : (
@@ -1103,9 +1185,12 @@ const AdminDashboard = ({ isAuthenticated }) => {
                       <th>
                         <input 
                           type="checkbox" 
-                          checked={selectedProducts.length === products.length && products.length > 0}
+                          checked={(() => {
+                            const filteredIds = getFilteredProducts().map(p => p._id);
+                            return filteredIds.length > 0 && filteredIds.every(id => selectedProducts.includes(id));
+                          })()}
                           onChange={toggleSelectAll}
-                          title="Select all"
+                          title="Select all visible products"
                         />
                       </th>
                       <th>Image</th>
@@ -1117,7 +1202,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map(product => {
+                    {getFilteredProducts().map(product => {
                       const imgSrc = normalizeImageUrl(product.image) || logo;
                       const isSelected = selectedProducts.includes(product._id);
                       return (
@@ -1170,6 +1255,18 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     })}
                   </tbody>
                 </table>
+                {getFilteredProducts().length === 0 && products.length > 0 && (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '2rem',
+                    color: '#666',
+                    background: '#f7f7f7',
+                    borderRadius: '8px',
+                    marginTop: '1rem'
+                  }}>
+                    No {isEservicesTab ? 'services' : 'products'} match your filters. Try adjusting your search or category filter.
+                  </div>
+                )}
               </div>
             )}
 
@@ -1190,26 +1287,33 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     <p>No top-level categories yet.</p>
                   ) : (
                     topLevelEserviceCategories.map(category => (
-                      <div key={category._id} className="category-card">
-                        <h3>{category.name}</h3>
-                        <p>{category.description}</p>
-                        <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
-                        <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
-                        <div className="card-actions">
-                          <button
-                            className="btn-edit"
-                            onClick={() => handleEditCategory(category)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn-delete"
-                            onClick={() => handleDeleteCategory(category._id)}
-                          >
-                            Delete
-                          </button>
+                      <React.Fragment key={category._id}>
+                        <div className="category-card">
+                          <h3>{category.name}</h3>
+                          <p>{category.description}</p>
+                          <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
+                          <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
+                          <div className="card-actions">
+                            <button
+                              className="btn-edit"
+                              onClick={() => handleEditCategory(category)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn-delete"
+                              onClick={() => handleDeleteCategory(category._id)}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                        {inlineEditCategoryId === category._id && (
+                          <div className="category-card inline-edit-card">
+                            {renderCategoryForm(() => setInlineEditCategoryId(null))}
+                          </div>
+                        )}
+                      </React.Fragment>
                     ))
                   )}
                 </div>
@@ -1226,25 +1330,32 @@ const AdminDashboard = ({ isAuthenticated }) => {
                     <p>No sub-categories yet.</p>
                   ) : (
                     subCategories.map(sub => (
-                      <div key={sub._id} className="category-card">
-                        <h3>{sub.name}</h3>
-                        <p>{sub.description}</p>
-                        <p className="meta">Parent: {sub.category?.name || '—'}</p>
-                        <div className="card-actions">
-                          <button
-                            className="btn-edit"
-                            onClick={() => handleEditSubCategory(sub)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn-delete"
-                            onClick={() => handleDeleteSubCategory(sub._id)}
-                          >
-                            Delete
-                          </button>
+                      <React.Fragment key={sub._id}>
+                        <div className="category-card">
+                          <h3>{sub.name}</h3>
+                          <p>{sub.description}</p>
+                          <p className="meta">Parent: {sub.category?.name || '—'}</p>
+                          <div className="card-actions">
+                            <button
+                              className="btn-edit"
+                              onClick={() => handleEditSubCategory(sub)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn-delete"
+                              onClick={() => handleDeleteSubCategory(sub._id)}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                        {inlineEditSubCategoryId === sub._id && (
+                          <div className="category-card inline-edit-card">
+                            {renderSubCategoryForm(() => setInlineEditSubCategoryId(null))}
+                          </div>
+                        )}
+                      </React.Fragment>
                     ))
                   )}
                 </div>
@@ -1267,27 +1378,34 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
             <div className="categories-grid">
               {categories.map(category => (
-                <div key={category._id} className="category-card">
-                  <h3>{category.name}</h3>
-                  <p>{category.description}</p>
-                  <p className="meta">Type: {category.type === 'eservice' ? 'E-Service' : 'Product'}</p>
-                  <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
-                  <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
-                  <div className="card-actions">
-                    <button
-                      className="btn-edit"
-                      onClick={() => handleEditCategory(category)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn-delete"
-                      onClick={() => handleDeleteCategory(category._id)}
-                    >
-                      Delete
-                    </button>
+                <React.Fragment key={category._id}>
+                  <div className="category-card">
+                    <h3>{category.name}</h3>
+                    <p>{category.description}</p>
+                    <p className="meta">Type: {category.type === 'eservice' ? 'E-Service' : 'Product'}</p>
+                    <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
+                    <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
+                    <div className="card-actions">
+                      <button
+                        className="btn-edit"
+                        onClick={() => handleEditCategory(category)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn-delete"
+                        onClick={() => handleDeleteCategory(category._id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
+                  {inlineEditCategoryId === category._id && (
+                    <div className="category-card inline-edit-card">
+                      {renderCategoryForm(() => setInlineEditCategoryId(null))}
+                    </div>
+                  )}
+                </React.Fragment>
               ))}
             </div>
           </div>
