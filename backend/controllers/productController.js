@@ -36,7 +36,7 @@ exports.getAllProducts = async (req, res) => {
       filter.$and = andFilters;
     }
 
-    const products = await Product.find(filter).populate('category').populate('subCategory');
+    const products = await Product.find(filter).populate('category').populate('subCategory').sort({ order: 1, createdAt: 1 });
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -105,6 +105,10 @@ exports.createProduct = async (req, res) => {
       type: resolvedType
     });
 
+    // set order to end of list for this type
+    const maxOrderDoc = await Product.findOne({ type: resolvedType }).sort({ order: -1 }).select('order');
+    product.order = maxOrderDoc && typeof maxOrderDoc.order === 'number' ? maxOrderDoc.order + 1 : 0;
+
     await product.save();
     await product.populate('category');
     await product.populate('subCategory');
@@ -117,7 +121,7 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
-    const { name, description, price, discount, image, category, active, type, subCategory } = req.body;
+    const { name, description, price, discount, image, category, active, type, subCategory, order } = req.body;
 
     const update = { updatedAt: Date.now() };
     if (typeof name !== 'undefined') update.name = name;
@@ -129,6 +133,7 @@ exports.updateProduct = async (req, res) => {
     if (typeof subCategory !== 'undefined') update.subCategory = subCategory;
     if (typeof active !== 'undefined') update.active = active;
     if (typeof type !== 'undefined') update.type = type;
+    if (typeof order !== 'undefined') update.order = Number(order);
 
     if (typeof subCategory !== 'undefined' && subCategory) {
       const subCategoryDoc = await SubCategory.findById(subCategory).populate('category');
@@ -184,6 +189,40 @@ exports.deleteProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Move product up or down by swapping order with neighbour
+exports.moveProduct = async (req, res) => {
+  try {
+    const { direction } = req.body; // 'up' or 'down'
+    if (!['up', 'down'].includes(direction)) {
+      return res.status(400).json({ message: 'Invalid direction' });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    const cmp = direction === 'up' ? -1 : 1;
+    const sort = direction === 'up' ? { order: -1 } : { order: 1 };
+
+    // find neighbour within same type
+    const neighbour = await Product.findOne({ type: product.type, _id: { $ne: product._id }, order: direction === 'up' ? { $lt: product.order } : { $gt: product.order } }).sort(sort).limit(1);
+
+    if (!neighbour) {
+      return res.status(200).json({ message: 'No neighbour to swap with', product });
+    }
+
+    const temp = product.order;
+    product.order = neighbour.order;
+    neighbour.order = temp;
+
+    await product.save();
+    await neighbour.save();
+
+    res.json({ message: 'Product moved', product });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

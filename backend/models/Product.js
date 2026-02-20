@@ -46,6 +46,11 @@ const productSchema = new mongoose.Schema({
     enum: ['SYP', 'USD', null],
     default: null
   },
+  order: {
+    type: Number,
+    default: 0,
+    index: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
