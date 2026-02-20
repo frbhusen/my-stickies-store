@@ -105,9 +105,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleMoveProduct = async (product, direction) => {
     try {
-      const config = {};
-      if (productCategoryFilter) config.params = { category: productCategoryFilter };
-      await api.post(`/products/${product._id}/move`, { direction }, config);
+      await api.post(`/products/${product._id}/move`, { direction });
       const type = product.type || (activeTab === 'eservices' ? 'eservice' : 'product');
       fetchProducts(type);
     } catch (error) {
