@@ -204,25 +204,33 @@ exports.moveProduct = async (req, res) => {
 
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
+    // Fetch all products of same type and sort by order then createdAt
+    const list = await Product.find({ type: product.type }).sort({ order: 1, createdAt: 1 });
 
-    const cmp = direction === 'up' ? -1 : 1;
-    const sort = direction === 'up' ? { order: -1 } : { order: 1 };
+    const index = list.findIndex(p => p._id.toString() === product._id.toString());
+    if (index === -1) return res.status(404).json({ message: 'Product not found in list' });
 
-    // find neighbour within same type
-    const neighbour = await Product.findOne({ type: product.type, _id: { $ne: product._id }, order: direction === 'up' ? { $lt: product.order } : { $gt: product.order } }).sort(sort).limit(1);
-
-    if (!neighbour) {
-      return res.status(200).json({ message: 'No neighbour to swap with', product });
+    let swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= list.length) {
+      return res.status(200).json({ message: 'Already at boundary', product });
     }
 
-    const temp = product.order;
-    product.order = neighbour.order;
-    neighbour.order = temp;
+    // Swap positions in array
+    const tmp = list[swapIndex];
+    list[swapIndex] = list[index];
+    list[index] = tmp;
 
-    await product.save();
-    await neighbour.save();
+    // Reassign order sequentially to ensure stable ordering
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].order !== i) {
+        list[i].order = i;
+        // eslint-disable-next-line no-await-in-loop
+        await list[i].save();
+      }
+    }
 
-    res.json({ message: 'Product moved', product });
+    const updated = await Product.findById(product._id);
+    res.json({ message: 'Product moved', product: updated });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
