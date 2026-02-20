@@ -205,7 +205,35 @@ exports.moveProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
     // Fetch all products of same type and sort by order then createdAt
-    const list = await Product.find({ type: product.type }).sort({ order: 1, createdAt: 1 });
+    // Resolve type: treat missing/null type as 'product' for backwards compatibility
+    const resolvedType = product.type === 'eservice' ? 'eservice' : 'product';
+
+    // Try fast path: find nearest neighbour and swap their orders
+    const sortDir = direction === 'up' ? -1 : 1;
+    const neighbourQuery = resolvedType === 'eservice'
+      ? { type: 'eservice', _id: { $ne: product._id } }
+      : { $or: [{ type: 'product' }, { type: { $exists: false } }, { type: null }], _id: { $ne: product._id } };
+
+    // When product.order is a number we can try to find neighbour by order
+    if (typeof product.order === 'number') {
+      const orderCond = direction === 'up' ? { $lt: product.order } : { $gt: product.order };
+      const neighbour = await Product.findOne({ ...neighbourQuery, order: orderCond }).sort({ order: sortDir, createdAt: sortDir }).limit(1);
+
+      if (neighbour && typeof neighbour.order === 'number' && neighbour.order !== product.order) {
+        const tmp = product.order;
+        product.order = neighbour.order;
+        neighbour.order = tmp;
+        await product.save();
+        await neighbour.save();
+        const updated = await Product.findById(product._id);
+        return res.json({ message: 'Product moved', product: updated });
+      }
+    }
+
+    // Fallback: full list reorder (stable, handles missing/duplicate orders)
+    const list = resolvedType === 'eservice'
+      ? await Product.find({ type: 'eservice' }).sort({ order: 1, createdAt: 1 })
+      : await Product.find({ $or: [{ type: 'product' }, { type: { $exists: false } }, { type: null }] }).sort({ order: 1, createdAt: 1 });
 
     const index = list.findIndex(p => p._id.toString() === product._id.toString());
     if (index === -1) return res.status(404).json({ message: 'Product not found in list' });
