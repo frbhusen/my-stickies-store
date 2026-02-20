@@ -103,16 +103,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, []);
 
-  const handleMoveProduct = async (product, direction) => {
-    try {
-      await api.post(`/products/${product._id}/move`, { direction });
-      const type = product.type || (activeTab === 'eservices' ? 'eservice' : 'product');
-      fetchProducts(type);
-    } catch (error) {
-      alert('Error moving product');
-    }
-  };
-
   const fetchCategories = useCallback(async (type) => {
     try {
       const params = type ? { type } : {};
@@ -1251,21 +1241,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
                             >
                               Delete
                             </button>
-                              <button
-                                className="btn-secondary"
-                                onClick={() => handleMoveProduct(product, 'up')}
-                                disabled={typeof product.order !== 'undefined' && product.order <= 0}
-                                style={{ marginLeft: '8px' }}
-                              >
-                                ▲
-                              </button>
-                              <button
-                                className="btn-secondary"
-                                onClick={() => handleMoveProduct(product, 'down')}
-                                style={{ marginLeft: '6px' }}
-                              >
-                                ▼
-                              </button>
                           </td>
                         </tr>
                         {inlineEditProductId === product._id && (

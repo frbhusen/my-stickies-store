@@ -36,7 +36,7 @@ exports.getAllProducts = async (req, res) => {
       filter.$and = andFilters;
     }
 
-    const products = await Product.find(filter).populate('category').populate('subCategory').sort({ order: 1, createdAt: 1 });
+    const products = await Product.find(filter).populate('category').populate('subCategory');
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -105,10 +105,6 @@ exports.createProduct = async (req, res) => {
       type: resolvedType
     });
 
-    // set order to end of list for this type
-    const maxOrderDoc = await Product.findOne({ type: resolvedType }).sort({ order: -1 }).select('order');
-    product.order = maxOrderDoc && typeof maxOrderDoc.order === 'number' ? maxOrderDoc.order + 1 : 0;
-
     await product.save();
     await product.populate('category');
     await product.populate('subCategory');
@@ -121,7 +117,7 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
-    const { name, description, price, discount, image, category, active, type, subCategory, order } = req.body;
+    const { name, description, price, discount, image, category, active, type, subCategory } = req.body;
 
     const update = { updatedAt: Date.now() };
     if (typeof name !== 'undefined') update.name = name;
@@ -133,7 +129,6 @@ exports.updateProduct = async (req, res) => {
     if (typeof subCategory !== 'undefined') update.subCategory = subCategory;
     if (typeof active !== 'undefined') update.active = active;
     if (typeof type !== 'undefined') update.type = type;
-    if (typeof order !== 'undefined') update.order = Number(order);
 
     if (typeof subCategory !== 'undefined' && subCategory) {
       const subCategoryDoc = await SubCategory.findById(subCategory).populate('category');
@@ -189,76 +184,6 @@ exports.deleteProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     res.json({ message: 'Product deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-// Move product up or down by swapping order with neighbour
-exports.moveProduct = async (req, res) => {
-  try {
-    const { direction } = req.body; // 'up' or 'down'
-    if (!['up', 'down'].includes(direction)) {
-      return res.status(400).json({ message: 'Invalid direction' });
-    }
-
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ message: 'Product not found' });
-    // Fetch all products of same type and sort by order then createdAt
-    // Resolve type: treat missing/null type as 'product' for backwards compatibility
-    const resolvedType = product.type === 'eservice' ? 'eservice' : 'product';
-
-    // Try fast path: find nearest neighbour and swap their orders
-    const sortDir = direction === 'up' ? -1 : 1;
-    const neighbourQuery = resolvedType === 'eservice'
-      ? { type: 'eservice', _id: { $ne: product._id } }
-      : { $or: [{ type: 'product' }, { type: { $exists: false } }, { type: null }], _id: { $ne: product._id } };
-
-    // When product.order is a number we can try to find neighbour by order
-    if (typeof product.order === 'number') {
-      const orderCond = direction === 'up' ? { $lt: product.order } : { $gt: product.order };
-      const neighbour = await Product.findOne({ ...neighbourQuery, order: orderCond }).sort({ order: sortDir, createdAt: sortDir }).limit(1);
-
-      if (neighbour && typeof neighbour.order === 'number' && neighbour.order !== product.order) {
-        const tmp = product.order;
-        product.order = neighbour.order;
-        neighbour.order = tmp;
-        await product.save();
-        await neighbour.save();
-        const updated = await Product.findById(product._id);
-        return res.json({ message: 'Product moved', product: updated });
-      }
-    }
-
-    // Fallback: full list reorder (stable, handles missing/duplicate orders)
-    const list = resolvedType === 'eservice'
-      ? await Product.find({ type: 'eservice' }).sort({ order: 1, createdAt: 1 })
-      : await Product.find({ $or: [{ type: 'product' }, { type: { $exists: false } }, { type: null }] }).sort({ order: 1, createdAt: 1 });
-
-    const index = list.findIndex(p => p._id.toString() === product._id.toString());
-    if (index === -1) return res.status(404).json({ message: 'Product not found in list' });
-
-    let swapIndex = direction === 'up' ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= list.length) {
-      return res.status(200).json({ message: 'Already at boundary', product });
-    }
-
-    // Swap positions in array
-    const tmp = list[swapIndex];
-    list[swapIndex] = list[index];
-    list[index] = tmp;
-
-    // Reassign order sequentially to ensure stable ordering
-    for (let i = 0; i < list.length; i++) {
-      if (list[i].order !== i) {
-        list[i].order = i;
-        // eslint-disable-next-line no-await-in-loop
-        await list[i].save();
-      }
-    }
-
-    const updated = await Product.findById(product._id);
-    res.json({ message: 'Product moved', product: updated });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
