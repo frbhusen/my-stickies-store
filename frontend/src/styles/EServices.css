@@ -108,6 +108,10 @@
   margin: 0 auto;
 }
 
+.service-image-wrapper.logo-default {
+  background: #ffffff;
+}
+
 /* image wrapper should not grow */
 .service-image-wrapper {
   flex: 0 0 auto;
@@ -119,6 +123,15 @@
   object-fit: contain;
   transition: transform 0.3s ease;
   background-color: #fff;
+}
+
+.service-image.logo-default {
+  width: 140px;
+  height: 140px;
+  max-width: 60%;
+  max-height: 60%;
+  margin: 0 auto;
+  background-color: transparent;
 }
 
 .service-card:hover .service-image {

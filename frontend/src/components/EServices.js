@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
+import logo from '../assets/logo.png';
 import '../styles/EServices.css';
 
 const EServices = () => {
@@ -45,7 +46,7 @@ const EServices = () => {
     if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
     if (trimmed) return trimmed;
     if (fallbackDriveId) return `https://drive.google.com/uc?export=view&id=${fallbackDriveId}`;
-    return 'https://via.placeholder.com/400x300?text=Image+Unavailable';
+    return logo;
   };
 
   const driveFallbacks = (url) => {
@@ -68,7 +69,7 @@ const EServices = () => {
       e.target.setAttribute('data-fallback-idx', next);
       e.target.src = fallbacks[next];
     } else {
-      e.target.src = 'https://via.placeholder.com/400x300?text=Image+Unavailable';
+      e.target.src = logo;
     }
   };
 
@@ -199,11 +200,11 @@ const EServices = () => {
             <div className="eservices-grid">
               {categories.map(cat => (
                 <div key={cat._id} className="service-card" onClick={() => handleCategoryClick(cat)}>
-                  <div className="service-image-wrapper">
+                  <div className={`service-image-wrapper${cat.image ? '' : ' logo-default'}`}>
                     <img
                       src={primaryImageUrl(cat.image)}
                       alt={cat.name}
-                      className="service-image"
+                      className={`service-image${cat.image ? '' : ' logo-default'}`}
                       data-fallback-idx="0"
                       onError={(e) => handleImageError(e, cat.image)}
                     />
@@ -227,11 +228,11 @@ const EServices = () => {
               <div className="eservices-grid">
                 {subCategories.map((sc, idx) => (
                   <div key={sc._id} className="service-card" onClick={() => handleSubCategoryClick(sc)}>
-                    <div className="service-image-wrapper">
+                    <div className={`service-image-wrapper${sc.image ? '' : ' logo-default'}`}>
                       <img
                         src={primaryImageUrl(sc.image)}
                         alt={sc.name}
-                        className="service-image"
+                        className={`service-image${sc.image ? '' : ' logo-default'}`}
                         data-fallback-idx="0"
                         onError={(e) => handleImageError(e, sc.image)}
                       />

@@ -124,6 +124,11 @@
   margin: 0 auto;
 }
 
+.service-image-wrapper.logo-default,
+.product-image-wrapper.logo-default {
+  background: #ffffff;
+}
+
 .product-image-wrapper { flex: 0 0 auto; }
 
 .product-image {
@@ -132,6 +137,16 @@
   object-fit: contain;
   transition: transform 0.3s ease;
   background-color: #fff;
+}
+
+.service-image.logo-default,
+.product-image.logo-default {
+  width: 140px;
+  height: 140px;
+  max-width: 60%;
+  max-height: 60%;
+  margin: 0 auto;
+  background-color: transparent;
 }
 
 .product-card:hover .product-image {
