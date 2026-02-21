@@ -466,8 +466,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
       type: resolvedType,
       image: normalizeImageUrl(productForm.image)
     };
+    if (!payload.image) delete payload.image;
     if (payload.price === '' || payload.price === null) delete payload.price;
     if (payload.discount === '' || payload.discount === null) delete payload.discount;
+    if (payload.subCategory === '') delete payload.subCategory;
     if (resolvedType === 'eservice') {
       payload.category = undefined;
     }
@@ -999,7 +1001,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
           value={productForm.image}
           onChange={(e) => handleImageUrlChange(e.target.value)}
           placeholder={'Paste Google Drive image URL'}
-          required
         />
       </div>
       <div className="form-group">

@@ -101,7 +101,7 @@
   overflow: hidden;
   aspect-ratio: 40 / 56;
   max-height: 480px;
-  background: #f7f7f7; /* neutral background so broken images don’t show blue */
+  background: #ffffff; /* match card border/background */
   display: flex;
   align-items: center;
   justify-content: center;

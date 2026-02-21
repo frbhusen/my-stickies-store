@@ -73,6 +73,10 @@ const EServices = () => {
     }
   };
 
+  const blockImageActions = (e) => {
+    e.preventDefault();
+  };
+
   const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/categories?type=eservice');
@@ -207,6 +211,9 @@ const EServices = () => {
                       className={`service-image${cat.image ? '' : ' logo-default'}`}
                       data-fallback-idx="0"
                       onError={(e) => handleImageError(e, cat.image)}
+                      onContextMenu={blockImageActions}
+                      onDragStart={blockImageActions}
+                      draggable={false}
                     />
                   </div>
                   <div className="service-content">
@@ -235,6 +242,9 @@ const EServices = () => {
                         className={`service-image${sc.image ? '' : ' logo-default'}`}
                         data-fallback-idx="0"
                         onError={(e) => handleImageError(e, sc.image)}
+                        onContextMenu={blockImageActions}
+                        onDragStart={blockImageActions}
+                        draggable={false}
                       />
                     </div>
                       <div className="service-content">
@@ -269,6 +279,9 @@ const EServices = () => {
                         className="service-image"
                         data-fallback-idx="0"
                         onError={(e) => handleImageError(e, service.image)}
+                        onContextMenu={blockImageActions}
+                        onDragStart={blockImageActions}
+                        draggable={false}
                       />
                       {service.discount > 0 && (
                         <div className="discount-badge">-{service.discount}%</div>

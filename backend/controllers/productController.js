@@ -296,7 +296,7 @@ exports.updateProduct = async (req, res) => {
     if (typeof discount !== 'undefined' && discount !== '' && discount !== null) update.discount = Number(discount);
     if (typeof image !== 'undefined') update.image = image;
     if (typeof category !== 'undefined') update.category = category;
-    if (typeof subCategory !== 'undefined') update.subCategory = subCategory;
+    if (typeof subCategory !== 'undefined') update.subCategory = subCategory === '' ? undefined : subCategory;
     if (typeof active !== 'undefined') update.active = active;
     if (typeof type !== 'undefined') update.type = type;
 

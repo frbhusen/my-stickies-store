@@ -12,6 +12,7 @@ const Products = () => {
   const [view, setView] = useState('categories'); // 'categories' | 'subcategories' | 'products'
   const [selectedCategoryObj, setSelectedCategoryObj] = useState(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
+  const [categoryProducts, setCategoryProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('SYP');
@@ -111,8 +112,10 @@ const Products = () => {
 
       const response = await api.get('/products', { params });
       setProducts(response.data);
+      return response.data;
     } catch (error) {
       console.error('Error fetching products:', error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -161,6 +164,9 @@ const Products = () => {
     const subs = await fetchSubCategories(category._id);
     if (subs && subs.length > 0) {
       setView('subcategories');
+      const allCategoryProducts = await fetchProducts({ category: category._id });
+      const directProducts = (allCategoryProducts || []).filter(p => !p.subCategory);
+      setCategoryProducts(directProducts);
     } else {
       setView('products');
       await fetchProducts({ category: category._id });
@@ -179,13 +185,20 @@ const Products = () => {
     setSelectedCategoryObj(null);
     setSelectedSubCategory(null);
     setSubCategories([]);
+    setCategoryProducts([]);
     fetchProducts();
   };
 
   const handleBackToSubCategories = () => {
     setView('subcategories');
     setSelectedSubCategory(null);
-    if (selectedCategoryObj) fetchSubCategories(selectedCategoryObj._id);
+    if (selectedCategoryObj) {
+      fetchSubCategories(selectedCategoryObj._id);
+      fetchProducts({ category: selectedCategoryObj._id }).then((allCategoryProducts) => {
+        const directProducts = (allCategoryProducts || []).filter(p => !p.subCategory);
+        setCategoryProducts(directProducts);
+      });
+    }
   };
 
   return (
@@ -239,6 +252,41 @@ const Products = () => {
             <div className="subcategories-panel">
               <button className="back-btn" onClick={handleBackToCategories}>{t('products.backToCategories')}</button>
               <h2>{selectedCategoryObj?.name}</h2>
+              {categoryProducts.length > 0 && (
+                <div className="eservices-grid" style={{ marginBottom: '1.5rem' }}>
+                  {categoryProducts.map(product => (
+                    <div key={product._id} className="service-card">
+                      <div className="service-image-wrapper">
+                        <img
+                          src={primaryImageUrl(product.image)}
+                          alt={product.name}
+                          className={`service-image${product.image ? '' : ' logo-default'}`}
+                          data-fallback-idx="0"
+                          onError={(e) => handleImageError(e, product.image)}
+                        />
+                        {product.discount > 0 && <div className="discount-badge">-{product.discount}%</div>}
+                      </div>
+                      <div className="service-content">
+                        <h3>{product.name}</h3>
+                        <p className="service-description">{product.description}</p>
+                        <div className="service-pricing">
+                          {product.discount > 0 ? (
+                            <>
+                              <span className="original-price">{formatPrice(product.price, product.currency)}</span>
+                              <span className="final-price">{formatPrice(product.finalPrice, product.currency)}</span>
+                            </>
+                          ) : (
+                            <span className="final-price">{formatPrice(product.price, product.currency)}</span>
+                          )}
+                        </div>
+                        <button onClick={() => handleAddToCart(product)} className="add-to-cart-btn">
+                          {t('products.addToCart')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="eservices-grid">
                 {subCategories.map(sc => (
                   <div key={sc._id} className="service-card" onClick={() => handleSubCategoryClick(sc)}>

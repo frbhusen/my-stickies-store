@@ -117,7 +117,7 @@
   overflow: hidden;
   aspect-ratio: 40   / 56;
   max-height: 480px;
-  background: #f7f7f7; /* neutral background so broken images don’t show blue */
+  background: #ffffff; /* match card border/background */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,6 +132,27 @@
 .product-image-wrapper { flex: 0 0 auto; }
 
 .product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+  background-color: #fff;
+}
+
+/* Service-style image wrapper used in category/sub-category cards */
+.service-image-wrapper {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 40 / 56;
+  max-height: 480px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.service-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
