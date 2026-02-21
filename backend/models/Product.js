@@ -33,6 +33,11 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SubCategory'
   },
+  order: {
+    type: Number,
+    default: 0,
+    index: true
+  },
   stock: {
     type: Number,
     default: -1 // -1 means unlimited
@@ -45,11 +50,6 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ['SYP', 'USD', null],
     default: null
-  },
-  order: {
-    type: Number,
-    default: 0,
-    index: true
   },
   createdAt: {
     type: Date,

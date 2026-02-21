@@ -12,6 +12,13 @@ const subCategorySchema = new mongoose.Schema({
   image: {
     type: String
   },
+  defaultPrice: {
+    type: Number
+  },
+  defaultDiscount: {
+    type: Number,
+    default: 0
+  },
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
@@ -19,7 +26,7 @@ const subCategorySchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['eservice'],
+    enum: ['eservice','product'],
     default: 'eservice'
   },
   slug: {
@@ -31,6 +38,11 @@ const subCategorySchema = new mongoose.Schema({
     type: String,
     enum: ['SYP', 'USD', null],
     default: null
+  },
+  order: {
+    type: Number,
+    default: 0,
+    index: true
   },
   createdAt: {
     type: Date,

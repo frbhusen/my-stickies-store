@@ -11,14 +11,25 @@ const transporter = nodemailer.createTransport({
 const sendOrderEmail = async (order) => {
   try {
     const itemsHTML = order.items
-      .map(item => `
+      .map(item => {
+        const desc = item.productDescription ? `<div style="font-size:12px;color:#555;margin-top:4px;">${item.productDescription}</div>` : '';
+        const cat = item.categoryName ? `<div style="font-size:12px;color:#555;margin-top:4px;"><strong>Category:</strong> ${item.categoryName}</div>` : '';
+        const sub = item.subCategoryName ? `<div style="font-size:12px;color:#555;"><strong>Sub-Category:</strong> ${item.subCategoryName}</div>` : '';
+        const subDesc = item.subCategoryDescription ? `<div style="font-size:12px;color:#555;margin-top:2px;">${item.subCategoryDescription}</div>` : '';
+        return `
         <tr>
-          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.productName}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #ddd;">Qty: ${item.quantity}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #ddd;">SYP ${(item.price * item.quantity).toFixed(2)}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; vertical-align: top;">
+            <div style="font-weight:600">${item.productName}</div>
+            ${desc}
+            ${cat}
+            ${sub}
+            ${subDesc}
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; vertical-align: top;">${item.quantity}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; vertical-align: top;">SYP ${(item.price * item.quantity).toFixed(2)}</td>
         </tr>
-      `)
-      .join('');
+      `
+      }).join('');
 
     const mailOptions = {
       from: process.env.EMAIL_USER,

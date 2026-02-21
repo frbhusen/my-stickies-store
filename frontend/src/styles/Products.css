@@ -104,6 +104,13 @@
   box-shadow: 0 12px 28px rgba(4, 125, 203, 0.2);
 }
 
+/* make product cards behave like service cards so buttons align */
+.product-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 
 .product-image-wrapper {
   position: relative;
@@ -116,6 +123,8 @@
   justify-content: center;
   margin: 0 auto;
 }
+
+.product-image-wrapper { flex: 0 0 auto; }
 
 .product-image {
   width: 100%;
@@ -144,6 +153,10 @@
 
 .product-content {
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1 1 auto;
 }
 
 .product-content h3 {
@@ -151,17 +164,27 @@
   font-size: 1.2rem;
   margin-bottom: 0.5rem;
   line-height: 1.3;
+  text-align: center;
+}
+
+/* Also ensure service-content h3 (used by Products after refactor) is centered */
+.service-content h3 {
+  text-align: center;
 }
 
 .product-description {
   color: #666;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.6;
   margin-bottom: 1rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: pre-wrap; /* preserve blank lines and line breaks from admin input */
+}
+
+.category-description {
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .product-pricing {
@@ -198,11 +221,36 @@
 
 .add-to-cart-btn:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(4, 125, 203, 0.3);
+  box-shadow: 0 4px 12px rgba(39, 80, 176, 0.3);
 }
 
 .add-to-cart-btn:active {
   transform: scale(0.98);
+}
+
+/* Back navigation buttons */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.95rem;
+  background: #ffffff;
+  color: var(--color-dark);
+  border: 2px solid var(--color-light);
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  border-color: var(--color-medium);
+  box-shadow: 0 6px 16px rgba(4, 125, 203, 0.15);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
 }
 
 .loading-spinner {

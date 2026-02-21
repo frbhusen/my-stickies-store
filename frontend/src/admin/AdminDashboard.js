@@ -21,6 +21,11 @@ const normalizeImageUrl = (url) => {
   return trimmed;
 };
 
+const truncate = (text, len = 120) => {
+  if (!text) return '';
+  return text.length > len ? text.slice(0, len - 1) + '…' : text;
+};
+
 const AdminDashboard = ({ isAuthenticated }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('products');
@@ -38,9 +43,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showSubCategoryForm, setShowSubCategoryForm] = useState(false);
   const [showBatchForm, setShowBatchForm] = useState(false);
+  const [batchMode, setBatchMode] = useState('add'); // 'add' | 'edit'
   const [batchImages, setBatchImages] = useState('');
   const [batchCategory, setBatchCategory] = useState('');
   const [batchSubCategory, setBatchSubCategory] = useState('');
+  const [batchDescription, setBatchDescription] = useState('');
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [settingsCurrency, setSettingsCurrency] = useState('SYP');
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -64,6 +71,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
     description: '',
     image: '',
     category: '',
+    defaultPrice: '',
+    defaultDiscount: '',
     currency: null
   });
 
@@ -79,12 +88,28 @@ const AdminDashboard = ({ isAuthenticated }) => {
   });
 
   const isEservicesTab = activeTab === 'eservices';
+  const currentType = isEservicesTab ? 'eservice' : (activeTab === 'products' ? 'product' : undefined);
+  const currentTypeLabel = isEservicesTab ? 'E-Service' : 'Product';
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/admin');
     }
   }, [isAuthenticated, navigate]);
+
+  // If the stored admin token is missing, force re-login to avoid unauthorized requests
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        // Token missing — navigate to login so user can re-authenticate
+        alert('Your session has expired or you are not logged in. Please log in.');
+        navigate('/admin');
+      }
+    } catch (err) {
+      // ignore storage errors
+    }
+  }, [navigate]);
 
   const fetchProducts = useCallback(async (type) => {
     setLoading(true);
@@ -113,12 +138,17 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   }, []);
 
-  const fetchSubCategories = useCallback(async () => {
+  const fetchSubCategories = useCallback(async (type, categoryId) => {
     try {
-      const response = await api.get('/subcategories', { params: { type: 'eservice' } });
+      const params = {};
+      if (type) params.type = type;
+      if (categoryId) params.category = categoryId;
+      const response = await api.get('/subcategories', { params });
       setSubCategories(response.data);
+      return response.data;
     } catch (error) {
       alert('Error fetching sub-categories');
+      return [];
     }
   }, []);
 
@@ -173,9 +203,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       const type = activeTab === 'eservices' ? 'eservice' : 'product';
       fetchProducts(type);
       fetchCategories(type);
-      if (activeTab === 'eservices') {
-        fetchSubCategories();
-      }
+      // fetch sub-categories for the current type so admin can manage them for both products and e-services
+      fetchSubCategories(type);
     } else if (activeTab === 'categories') {
       fetchCategories();
     } else if (activeTab === 'settings') {
@@ -211,7 +240,34 @@ const AdminDashboard = ({ isAuthenticated }) => {
     setBatchImages('');
     setBatchCategory('');
     setBatchSubCategory('');
+    setBatchDescription('');
+    setBatchMode('add');
     setShowBatchForm(true);
+  };
+
+  const handleOpenBatchEdit = async () => {
+    if (selectedProducts.length === 0) {
+      alert('Select products to batch edit first');
+      return;
+    }
+    // Ensure sub-categories are loaded for current type
+    try {
+      await fetchSubCategories(currentType);
+    } catch (err) { /* ignore */ }
+    setBatchCategory('');
+    setBatchSubCategory('');
+    setBatchDescription('');
+    setBatchMode('edit');
+    console.debug('Opening batch edit for products:', selectedProducts);
+    setShowBatchForm(true);
+    // scroll to top where the form is rendered so it's visible
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        const el = document.getElementById('batch-edit-form');
+        if (el) el.querySelector('select')?.focus();
+      }, 300);
+    } catch (err) { /* ignore in non-browser env */ }
   };
 
   const handleSaveBatchProducts = async (e) => {
@@ -278,6 +334,36 @@ const AdminDashboard = ({ isAuthenticated }) => {
     }
   };
 
+  const handleSaveBatchEdit = async (e) => {
+    e.preventDefault();
+    if (selectedProducts.length === 0) {
+      alert('No products selected');
+      return;
+    }
+
+    const trimmedDescription = (batchDescription || '').trim();
+    if (!batchCategory && !batchSubCategory && !trimmedDescription) {
+      alert('Please enter a description or select a target category/sub-category');
+      return;
+    }
+
+    try {
+      const payload = {
+        ids: selectedProducts,
+        category: batchCategory || undefined,
+        subCategory: batchSubCategory || undefined,
+        description: trimmedDescription || undefined
+      };
+      await api.put('/products/batch', payload);
+      alert('Batch update successful');
+      setSelectedProducts([]);
+      setShowBatchForm(false);
+      fetchProducts(isEservicesTab ? 'eservice' : 'product');
+    } catch (error) {
+      alert('Error performing batch update: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   const handleEditProduct = (product) => {
     setEditingProduct(product);
     setProductForm({
@@ -293,6 +379,83 @@ const AdminDashboard = ({ isAuthenticated }) => {
     });
     setShowProductForm(false);
     setInlineEditProductId(product._id);
+    // load sub-categories for this product's type and category so the select is populated
+    try { fetchSubCategories(product.type || (product.category?.type ? product.category.type : (product.type || 'product')), product.category?._id); } catch (err) { /* ignore */ }
+  };
+
+  const handleCopyProduct = async (product) => {
+    if (!product) return;
+    const resolvedType = product.type || product.category?.type || (isEservicesTab ? 'eservice' : 'product');
+    const payload = {
+      name: `${product.name} (Copy)`,
+      description: product.description,
+      price: product.price,
+      discount: product.discount,
+      image: normalizeImageUrl(product.image),
+      type: resolvedType,
+      category: product.category?._id,
+      subCategory: product.subCategory?._id,
+      currency: product.currency || null
+    };
+
+    if (resolvedType === 'eservice' && !payload.subCategory) {
+      alert('Cannot copy: e-services must have a sub-category');
+      return;
+    }
+    if (resolvedType === 'eservice') {
+      payload.category = undefined;
+    }
+
+    try {
+      await api.post('/products', payload);
+      fetchProducts(resolvedType);
+    } catch (error) {
+      alert('Error copying product: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleBatchCopy = async () => {
+    if (selectedProducts.length === 0) {
+      alert('Please select products to copy');
+      return;
+    }
+
+    const productsToCopy = products.filter(p => selectedProducts.includes(p._id));
+    if (productsToCopy.length === 0) {
+      alert('No matching products found');
+      return;
+    }
+
+    const resolvedType = isEservicesTab ? 'eservice' : 'product';
+
+    try {
+      for (const product of productsToCopy) {
+        const payload = {
+          name: `${product.name} (Copy)`,
+          description: product.description,
+          price: product.price,
+          discount: product.discount,
+          image: normalizeImageUrl(product.image),
+          type: product.type || resolvedType,
+          category: product.category?._id,
+          subCategory: product.subCategory?._id,
+          currency: product.currency || null
+        };
+
+        if ((payload.type === 'eservice' || resolvedType === 'eservice') && !payload.subCategory) {
+          continue;
+        }
+        if (payload.type === 'eservice' || resolvedType === 'eservice') {
+          payload.category = undefined;
+        }
+
+        await api.post('/products', payload);
+      }
+
+      fetchProducts(resolvedType);
+    } catch (error) {
+      alert('Error copying products: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   const handleSaveProduct = async (e) => {
@@ -303,10 +466,10 @@ const AdminDashboard = ({ isAuthenticated }) => {
       type: resolvedType,
       image: normalizeImageUrl(productForm.image)
     };
+    if (payload.price === '' || payload.price === null) delete payload.price;
+    if (payload.discount === '' || payload.discount === null) delete payload.discount;
     if (resolvedType === 'eservice') {
       payload.category = undefined;
-    } else {
-      payload.subCategory = undefined;
     }
     try {
       if (editingProduct) {
@@ -331,6 +494,28 @@ const AdminDashboard = ({ isAuthenticated }) => {
       } catch (error) {
         alert('Error deleting product');
       }
+    }
+  };
+
+  const handleMoveProduct = async (id, direction) => {
+    try {
+      // include current filter scope so move is limited to visible list
+      const params = {};
+      if (isEservicesTab) {
+        if (productCategoryFilter) params.subCategory = productCategoryFilter;
+      } else {
+        if (productCategoryFilter) params.category = productCategoryFilter;
+      }
+
+      await api.post(`/products/${id}/move`, { direction }, { params });
+      fetchProducts(isEservicesTab ? 'eservice' : 'product');
+    } catch (error) {
+      if (error.response?.status === 401) {
+        alert('Session expired — please log in again');
+        handleLogout();
+        return;
+      }
+      alert('Error moving product: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -386,7 +571,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
 
   const handleAddSubCategory = () => {
     setEditingCategory(null);
-    setSubCategoryForm({ name: '', description: '', image: '', category: '' });
+    setSubCategoryForm({ name: '', description: '', image: '', category: '', defaultPrice: '', defaultDiscount: '', currency: null });
     setShowSubCategoryForm(true);
   };
 
@@ -397,6 +582,8 @@ const AdminDashboard = ({ isAuthenticated }) => {
       description: subCategory.description || '',
       image: subCategory.image || '',
       category: subCategory.category?._id || '',
+      defaultPrice: subCategory.defaultPrice ?? '',
+      defaultDiscount: subCategory.defaultDiscount ?? '',
       currency: subCategory.currency || null
     });
     setShowSubCategoryForm(false);
@@ -410,17 +597,25 @@ const AdminDashboard = ({ isAuthenticated }) => {
       return;
     }
     try {
+      const parentCat = categories.find(c => c._id === subCategoryForm.category);
+      const payload = { ...subCategoryForm, type: parentCat?.type || currentType };
       if (editingCategory && editingCategory.category) {
-        await api.put(`/subcategories/${editingCategory._id}`, subCategoryForm);
+        await api.put(`/subcategories/${editingCategory._id}`, payload);
       } else {
-        await api.post('/subcategories', subCategoryForm);
+        await api.post('/subcategories', payload);
       }
       setShowSubCategoryForm(false);
       setInlineEditSubCategoryId(null);
       setEditingCategory(null);
-      fetchSubCategories();
+      // refresh sub-categories for this type
+      fetchSubCategories(payload.type);
     } catch (error) {
-      alert('Error saving sub-category');
+      if (error.response?.status === 401) {
+        alert('Session expired or unauthorized — please log in again');
+        handleLogout();
+        return;
+      }
+      alert('Error saving sub-category: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -428,9 +623,27 @@ const AdminDashboard = ({ isAuthenticated }) => {
     if (!window.confirm('Are you sure you want to delete this sub-category?')) return;
     try {
       await api.delete(`/subcategories/${id}`);
-      fetchSubCategories();
+      const sc = subCategories.find(s => s._id === id);
+      const typeToRefresh = sc?.category?.type || sc?.type || currentType;
+      fetchSubCategories(typeToRefresh);
     } catch (error) {
       alert('Error deleting sub-category');
+    }
+  };
+
+  const handleMoveSubCategory = async (id, direction) => {
+    try {
+      await api.post(`/subcategories/${id}/move`, { direction });
+      const sc = subCategories.find(s => s._id === id);
+      const typeToRefresh = sc?.category?.type || sc?.type || currentType;
+      fetchSubCategories(typeToRefresh);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        alert('Session expired — please log in again');
+        handleLogout();
+        return;
+      }
+      alert('Error moving sub-category: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -519,12 +732,20 @@ const AdminDashboard = ({ isAuthenticated }) => {
       const name = order.customer?.fullName || '';
       const city = order.customer?.city || '';
       const phone = order.customer?.phoneNumber || '';
+      const email = order.customer?.email || '';
+      const status = order.status || '';
+      const created = order.createdAt ? new Date(order.createdAt).toLocaleString() : '';
+      const itemsCount = Array.isArray(order.items) ? order.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : 0;
       const total = order.totalAmount?.toFixed ? order.totalAmount.toFixed(2) : order.totalAmount;
       return `<tr>
         <td>${order.orderNumber || ''}</td>
+        <td>${created}</td>
+        <td>${status}</td>
         <td>${name}</td>
-        <td>${city}</td>
         <td>${phone}</td>
+        <td>${city}</td>
+        <td>${email}</td>
+        <td>${itemsCount}</td>
         <td>SYP ${total}</td>
       </tr>`;
     }).join('');
@@ -550,9 +771,13 @@ const AdminDashboard = ({ isAuthenticated }) => {
             <thead>
               <tr>
                 <th>Order #</th>
-                <th>Name</th>
-                <th>City</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Customer</th>
                 <th>Phone</th>
+                <th>City</th>
+                <th>Email</th>
+                <th>Items</th>
                 <th>Total</th>
               </tr>
             </thead>
@@ -773,57 +998,65 @@ const AdminDashboard = ({ isAuthenticated }) => {
           type="text"
           value={productForm.image}
           onChange={(e) => handleImageUrlChange(e.target.value)}
-          placeholder={productForm.type === 'eservice' ? 'Uses sub-category image' : 'Paste Google Drive image URL'}
+          placeholder={'Paste Google Drive image URL'}
           required
-          disabled={productForm.type === 'eservice'}
         />
       </div>
-      {productForm.type === 'eservice' ? (
+      <div className="form-group">
+        <label>Category</label>
+        <select
+          value={productForm.category}
+          onChange={async (e) => {
+            const catId = e.target.value;
+            const updated = applyCategoryDefaultsToProduct(catId, {...productForm, category: catId});
+            setProductForm(updated);
+            // fetch sub-categories for this category and current product type
+            try {
+              await fetchSubCategories(productForm.type || currentType, catId);
+            } catch (err) {
+              // ignore
+            }
+          }}
+          required
+        >
+          <option value="">Select Category</option>
+          {categories
+            .filter(cat => !productForm.type || cat.type === productForm.type)
+            .map(cat => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
+        </select>
+      </div>
+
+      {productForm.category && subCategories.filter(s => s.category?._id === productForm.category).length > 0 && (
         <div className="form-group">
-          <label>Sub-Category</label>
+          <label>Sub-Category{productForm.type === 'eservice' ? ' (required)' : ' (optional)'}</label>
           <select
             value={productForm.subCategory}
             onChange={(e) => {
               const subId = e.target.value;
               const sub = subCategories.find(s => s._id === subId);
-              const parent = sub?.category || null;
               const updated = { ...productForm, subCategory: subId };
-              if (parent) {
-                if (!updated.price && parent.defaultPrice !== undefined && parent.defaultPrice !== null) {
-                  updated.price = parent.defaultPrice;
+              if (sub) {
+                if (!updated.price && typeof sub.defaultPrice !== 'undefined' && sub.defaultPrice !== null) {
+                  updated.price = sub.defaultPrice;
                 }
                 if ((updated.discount === '' || updated.discount === null || typeof updated.discount === 'undefined')
-                  && typeof parent.defaultDiscount !== 'undefined' && parent.defaultDiscount !== null) {
-                  updated.discount = parent.defaultDiscount;
+                  && typeof sub.defaultDiscount !== 'undefined' && sub.defaultDiscount !== null) {
+                  updated.discount = sub.defaultDiscount;
                 }
-                if (!updated.description && parent.description) {
-                  updated.description = parent.description;
+                if (!updated.description && sub.description) {
+                  updated.description = sub.description;
                 }
               }
               setProductForm(updated);
             }}
-            required
+            required={productForm.type === 'eservice'}
           >
-            <option value="">Select Sub-Category</option>
-            {subCategories.map(sub => (
+            <option value="">{productForm.type === 'eservice' ? 'Select Sub-Category' : 'None'}</option>
+            {subCategories.filter(s => s.category?._id === productForm.category).map(sub => (
               <option key={sub._id} value={sub._id}>{sub.name}</option>
             ))}
-          </select>
-        </div>
-      ) : (
-        <div className="form-group">
-          <label>Category</label>
-          <select
-            value={productForm.category}
-            onChange={(e) => setProductForm(applyCategoryDefaultsToProduct(e.target.value, {...productForm, category: e.target.value}))}
-            required
-          >
-            <option value="">Select Category</option>
-            {categories
-              .filter(cat => !productForm.type || cat.type === productForm.type)
-              .map(cat => (
-              <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
           </select>
         </div>
       )}
@@ -972,9 +1205,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
           required
         >
           <option value="">Select Parent Category</option>
-          {categories.filter(cat => cat.type === 'eservice').map(cat => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
-          ))}
+          {categories
+            .filter(cat => !currentType || cat.type === currentType)
+            .map(cat => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
         </select>
       </div>
       <div className="form-group">
@@ -985,6 +1220,26 @@ const AdminDashboard = ({ isAuthenticated }) => {
           onChange={(e) => setSubCategoryForm({...subCategoryForm, image: e.target.value})}
           placeholder="Paste Google Drive image URL"
         />
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Sub-Category Default Price (optional)</label>
+          <input
+            type="number"
+            step="0.01"
+            value={subCategoryForm.defaultPrice || ''}
+            onChange={(e) => setSubCategoryForm({...subCategoryForm, defaultPrice: e.target.value})}
+          />
+        </div>
+        <div className="form-group">
+          <label>Sub-Category Default Discount (%)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={subCategoryForm.defaultDiscount || ''}
+            onChange={(e) => setSubCategoryForm({...subCategoryForm, defaultDiscount: e.target.value})}
+          />
+        </div>
       </div>
       <div className="form-group">
         <label>Currency Override (optional)</label>
@@ -1071,6 +1326,11 @@ const AdminDashboard = ({ isAuthenticated }) => {
                   {isEservicesTab ? '💻 Batch Add' : '📦 Batch Add'}
                 </button>
                 {selectedProducts.length > 0 && (
+                  <button className="btn-secondary" onClick={handleBatchCopy}>
+                    📄 Copy Selected ({selectedProducts.length})
+                  </button>
+                )}
+                {selectedProducts.length > 0 && (
                   <button className="btn-delete" onClick={handleBatchDelete}>
                     🗑️ Delete Selected ({selectedProducts.length})
                   </button>
@@ -1078,7 +1338,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
               </div>
             </div>
 
-            {showBatchForm && (
+            {showBatchForm && batchMode === 'add' && (
               <form className="form-card" onSubmit={handleSaveBatchProducts}>
                 <h3>{isEservicesTab ? 'Batch Add E-Services' : 'Batch Add Products'}</h3>
                 <div className="form-group">
@@ -1108,6 +1368,67 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 </div>
                 <div className="form-buttons">
                   <button type="submit" className="btn-primary">{isEservicesTab ? 'Add All Services' : 'Add All Products'}</button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setShowBatchForm(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {showBatchForm && batchMode === 'edit' && (
+              <form id="batch-edit-form" className="form-card" onSubmit={handleSaveBatchEdit}>
+                <h3>Batch Edit Selected Products</h3>
+                <div className="form-group">
+                  <label>Target Category</label>
+                  <select
+                    value={batchCategory}
+                    onChange={(e) => setBatchCategory(e.target.value)}
+                    disabled={!!batchSubCategory}
+                  >
+                    <option value="">No change</option>
+                    {categories.map(cat => (
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  {batchSubCategory && (
+                    <small style={{color:'#666',fontSize:'12px'}}>Category is set automatically from selected sub-category</small>
+                  )}
+                </div>
+                <div className="form-group">
+                  <label>Target Sub-Category</label>
+                  <select
+                    value={batchSubCategory}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setBatchSubCategory(val);
+                      if (val) {
+                        const sc = subCategories.find(s => s._id === val);
+                        if (sc && sc.category) setBatchCategory(sc.category._id);
+                      }
+                    }}
+                  >
+                    <option value="">No change</option>
+                    {subCategories.map(sc => (
+                      <option key={sc._id} value={sc._id}>{sc.name} (Parent: {sc.category?.name})</option>
+                    ))}
+                  </select>
+                  <small style={{color: '#666', fontSize: '12px'}}>If you set a sub-category, its parent category will be applied automatically.</small>
+                </div>
+                <div className="form-group">
+                  <label>Update Description</label>
+                  <textarea
+                    value={batchDescription}
+                    onChange={(e) => setBatchDescription(e.target.value)}
+                    rows="4"
+                    placeholder="Leave empty to keep current descriptions"
+                  />
+                </div>
+                <div className="form-buttons">
+                  <button type="submit" className="btn-primary">Apply to Selected ({selectedProducts.length})</button>
                   <button
                     type="button"
                     className="btn-secondary"
@@ -1151,15 +1472,21 @@ const AdminDashboard = ({ isAuthenticated }) => {
                         width: '100%'
                       }}
                     >
-                      <option value="">All {isEservicesTab ? 'Sub-Categories' : 'Categories'}</option>
-                      {isEservicesTab 
-                        ? subCategories.map(sub => (
-                            <option key={sub._id} value={sub._id}>{sub.name}</option>
-                          ))
-                        : categories.filter(cat => cat.type === 'product').map(cat => (
-                            <option key={cat._id} value={cat._id}>{cat.name}</option>
-                          ))
-                      }
+                      <option value="">All {isEservicesTab ? 'Sub-Categories' : 'Categories/Sub-Categories'}</option>
+                      {isEservicesTab ? (
+                        subCategories.map(sub => (
+                          <option key={sub._id} value={sub._id}>{sub.name}</option>
+                        ))
+                      ) : (
+                        categories.filter(cat => cat.type === 'product').map(cat => (
+                          <React.Fragment key={cat._id}>
+                            <option value={cat._id}>{cat.name}</option>
+                            {subCategories.filter(s => s.category?._id === cat._id).map(sub => (
+                              <option key={sub._id} value={sub._id}>— {cat.name} › {sub.name}</option>
+                            ))}
+                          </React.Fragment>
+                        ))
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1195,6 +1522,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                       </th>
                       <th>Image</th>
                       <th>Name</th>
+                      <th>Description</th>
                       <th>Price</th>
                       <th>Discount</th>
                       <th>Category</th>
@@ -1225,6 +1553,7 @@ const AdminDashboard = ({ isAuthenticated }) => {
                             />
                           </td>
                           <td>{product.name}</td>
+                          <td style={{maxWidth: '28ch', whiteSpace: 'normal'}}>{truncate(product.description, 140)}</td>
                           <td>SYP {Number(product.price || 0).toFixed(2)}</td>
                           <td>{product.discount}%</td>
                           <td>{product.category?.name}</td>
@@ -1235,6 +1564,26 @@ const AdminDashboard = ({ isAuthenticated }) => {
                             >
                               Edit
                             </button>
+                            <button
+                              className="btn-secondary"
+                              onClick={() => handleCopyProduct(product)}
+                            >
+                              Copy
+                            </button>
+                              <button
+                                className="btn-move"
+                                title="Move up"
+                                onClick={() => handleMoveProduct(product._id, 'up')}
+                              >
+                                ▲
+                              </button>
+                              <button
+                                className="btn-move"
+                                title="Move down"
+                                onClick={() => handleMoveProduct(product._id, 'down')}
+                              >
+                                ▼
+                              </button>
                             <button
                               className="btn-delete"
                               onClick={() => handleDeleteProduct(product._id)}
@@ -1270,44 +1619,56 @@ const AdminDashboard = ({ isAuthenticated }) => {
               </div>
             )}
 
-            {isEservicesTab && (
+            {(activeTab === 'eservices' || activeTab === 'products') && (
               <div className="tab-content" style={{ marginTop: '2rem' }}>
                 <div className="content-header">
-                  <h2>E-Service Categories</h2>
+                  <h2>{currentTypeLabel} Categories</h2>
                   <div className="header-buttons">
-                    <button className="btn-primary" onClick={handleAddEserviceCategory}>
-                      + Add Top Category
-                    </button>
-                  </div>
+                      <button className="btn-primary" onClick={() => currentType === 'eservice' ? handleAddEserviceCategory() : handleAddCategory()}>
+                        + Add Top Category
+                      </button>
+                      <button className="btn-secondary" onClick={handleOpenBatchEdit} disabled={selectedProducts.length === 0} style={{marginLeft: '8px'}}>
+                        Batch Edit Selected
+                      </button>
+                    </div>
                 </div>
                 {showCategoryForm && renderCategoryForm(() => setShowCategoryForm(false))}
                 <h3 style={{ marginTop: '1rem' }}>Top-Level Categories</h3>
                 <div className="categories-grid">
-                  {topLevelEserviceCategories.length === 0 ? (
+                  {categories.filter(cat => cat.type === currentType).length === 0 ? (
                     <p>No top-level categories yet.</p>
                   ) : (
-                    topLevelEserviceCategories.map(category => (
+                    categories.filter(cat => cat.type === currentType).map(category => (
                       <React.Fragment key={category._id}>
-                        <div className="category-card">
-                          <h3>{category.name}</h3>
-                          <p>{category.description}</p>
-                          <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
-                          <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
-                          <div className="card-actions">
-                            <button
-                              className="btn-edit"
-                              onClick={() => handleEditCategory(category)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="btn-delete"
-                              onClick={() => handleDeleteCategory(category._id)}
-                            >
-                              Delete
-                            </button>
+                          <div className="category-card">
+                            <div className="category-image-wrapper">
+                              <img
+                                src={normalizeImageUrl(category.image) || logo}
+                                alt={category.name}
+                                className="table-image"
+                                data-fallback-idx="0"
+                                onError={(e) => handleTableImageError(e, category.image)}
+                              />
+                            </div>
+                            <h3>{category.name}</h3>
+                            <p>{category.description}</p>
+                            <p className="meta">Price: {category.defaultPrice ? `SYP ${Number(category.defaultPrice).toFixed(2)}` : '—'}</p>
+                            <p className="meta">Discount: {typeof category.defaultDiscount !== 'undefined' ? `${category.defaultDiscount}%` : '—'}</p>
+                            <div className="card-actions">
+                              <button
+                                className="btn-edit"
+                                onClick={() => handleEditCategory(category)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="btn-delete"
+                                onClick={() => handleDeleteCategory(category._id)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
-                        </div>
                         {inlineEditCategoryId === category._id && (
                           <div className="category-card inline-edit-card">
                             {renderCategoryForm(() => setInlineEditCategoryId(null))}
@@ -1326,13 +1687,16 @@ const AdminDashboard = ({ isAuthenticated }) => {
                 </div>
                 {showSubCategoryForm && renderSubCategoryForm(() => setShowSubCategoryForm(false))}
                 <div className="categories-grid">
-                  {subCategories.length === 0 ? (
+                  {subCategories.filter(sc => sc.category?.type === currentType).length === 0 ? (
                     <p>No sub-categories yet.</p>
-                  ) : (
-                    subCategories.map(sub => (
+                    ) : (
+                    subCategories.filter(sc => sc.category?.type === currentType).map((sub, idx) => (
                       <React.Fragment key={sub._id}>
                         <div className="category-card">
-                          <h3>{sub.name}</h3>
+                          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                            <h3 style={{margin: 0}}>{sub.name}</h3>
+                            <div className="sub-order-badge admin">{sub.order ?? (idx + 1)}</div>
+                          </div>
                           <p>{sub.description}</p>
                           <p className="meta">Parent: {sub.category?.name || '—'}</p>
                           <div className="card-actions">
@@ -1341,6 +1705,20 @@ const AdminDashboard = ({ isAuthenticated }) => {
                               onClick={() => handleEditSubCategory(sub)}
                             >
                               Edit
+                            </button>
+                            <button
+                              className="btn-move"
+                              title="Move up"
+                              onClick={() => handleMoveSubCategory(sub._id, 'up')}
+                            >
+                              ▲
+                            </button>
+                            <button
+                              className="btn-move"
+                              title="Move down"
+                              onClick={() => handleMoveSubCategory(sub._id, 'down')}
+                            >
+                              ▼
                             </button>
                             <button
                               className="btn-delete"
@@ -1380,6 +1758,15 @@ const AdminDashboard = ({ isAuthenticated }) => {
               {categories.map(category => (
                 <React.Fragment key={category._id}>
                   <div className="category-card">
+                    <div className="category-image-wrapper">
+                      <img
+                        src={normalizeImageUrl(category.image) || logo}
+                        alt={category.name}
+                        className="table-image"
+                        data-fallback-idx="0"
+                        onError={(e) => handleTableImageError(e, category.image)}
+                      />
+                    </div>
                     <h3>{category.name}</h3>
                     <p>{category.description}</p>
                     <p className="meta">Type: {category.type === 'eservice' ? 'E-Service' : 'Product'}</p>
@@ -1456,7 +1843,21 @@ const AdminDashboard = ({ isAuthenticated }) => {
                         <tbody>
                           {order.items.map((item, idx) => (
                             <tr key={idx}>
-                              <td>{item.productName}</td>
+                              <td>
+                                <div style={{fontWeight: 600}}>{item.productName}</div>
+                                {item.productDescription && (
+                                  <div style={{fontSize: '12px', color: '#555', marginTop: '6px'}}>{item.productDescription}</div>
+                                )}
+                                {item.categoryName && (
+                                  <div style={{fontSize: '12px', color: '#555', marginTop: '6px'}}><strong>Category:</strong> {item.categoryName}</div>
+                                )}
+                                {item.subCategoryName && (
+                                  <div style={{fontSize: '12px', color: '#555'}}><strong>Sub-Category:</strong> {item.subCategoryName}</div>
+                                )}
+                                {item.subCategoryDescription && (
+                                  <div style={{fontSize: '12px', color: '#555', marginTop: '4px'}}>{item.subCategoryDescription}</div>
+                                )}
+                              </td>
                               <td>{item.quantity}</td>
                               <td>SYP {item.price.toFixed(2)}</td>
                               <td>SYP {(item.price * item.quantity).toFixed(2)}</td>

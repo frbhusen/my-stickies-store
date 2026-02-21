@@ -32,7 +32,11 @@
     "loading": "Loading products...",
     "originalPrice": "Original",
     "finalPrice": "Price",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "backToCategories": "Back to Categories",
+    "backToSubCategories": "Back to Sub-Categories",
+    "openCategory": "Open",
+    "openSubCategory": "Open"
   },
   "cart": {
     "title": "Shopping Cart",

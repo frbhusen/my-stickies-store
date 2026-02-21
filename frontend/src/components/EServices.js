@@ -7,6 +7,10 @@ const EServices = () => {
   const { t } = useTranslation();
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [view, setView] = useState('categories'); // 'categories' | 'subcategories' | 'products'
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -77,11 +81,37 @@ const EServices = () => {
     }
   }, []);
 
-  const fetchServices = useCallback(async () => {
+  const fetchSubCategories = useCallback(async (categoryId) => {
+    try {
+      const params = { type: 'eservice' };
+      if (categoryId) params.category = categoryId;
+      const response = await api.get('/subcategories', { params });
+      setSubCategories(response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching sub-categories:', error);
+      return [];
+    }
+  }, []);
+
+  const fetchServices = useCallback(async (opts = {}) => {
     setLoading(true);
     try {
       let params = { type: 'eservice' };
       if (searchTerm) params.search = searchTerm;
+      if (opts.category) params.category = opts.category;
+      else if (selectedCategory) params.category = selectedCategory._id;
+      if (opts.subCategory) params.subCategory = opts.subCategory;
+      else if (selectedSubCategory) params.subCategory = selectedSubCategory._id;
+
+      // normalize ids to plain strings to ensure query params are sent correctly
+      if (params.category) params.category = String(params.category);
+      if (params.subCategory) params.subCategory = String(params.subCategory);
+
+      // debug: help trace why sub-category filtering might be ignored
+      // remove in production
+      // eslint-disable-next-line no-console
+      console.debug('fetchServices -> params', params);
 
       const response = await api.get('/products', { params });
       setServices(response.data);
@@ -90,7 +120,7 @@ const EServices = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedCategory, selectedSubCategory]);
 
   useEffect(() => {
     fetchCategories();
@@ -111,6 +141,40 @@ const EServices = () => {
     alert(`${service.name} ${t('eservices.added')}`);
   };
 
+  const handleCategoryClick = async (category) => {
+    setSelectedCategory(category);
+    setServices([]);
+    const subs = await fetchSubCategories(category._id);
+    if (subs && subs.length > 0) {
+      setView('subcategories');
+    } else {
+      // No sub-categories: show products for this category
+      setView('products');
+      await fetchServices({ category: category._id });
+    }
+  };
+
+  const handleSubCategoryClick = async (subCat) => {
+    setSelectedSubCategory(subCat);
+    setServices([]);
+    setView('products');
+    await fetchServices({ subCategory: String(subCat._id) });
+  };
+
+  const handleBackToCategories = () => {
+    setView('categories');
+    setSelectedCategory(null);
+    setSelectedSubCategory(null);
+    setSubCategories([]);
+    fetchServices();
+  };
+
+  const handleBackToSubCategories = () => {
+    setView('subcategories');
+    setSelectedSubCategory(null);
+    if (selectedCategory) fetchSubCategories(selectedCategory._id);
+  };
+
   return (
     <div className="eservices-container">
       <div className="eservices-header">
@@ -129,60 +193,112 @@ const EServices = () => {
 
       {loading ? (
         <div className="loading-spinner">{t('eservices.loading')}</div>
-      ) : services.length === 0 ? (
-        <div className="no-services">{t('eservices.noServices')}</div>
       ) : (
-        <div className="category-sections">
-          {categories.map(category => {
-            const categoryServices = services.filter(service => service.category?.slug === category.slug);
-            if (categoryServices.length === 0) return null;
-            return (
-              <section key={category._id} className="category-section">
-                <div className="category-header">
-                  <h2>{category.name}</h2>
+        <>
+          {view === 'categories' && (
+            <div className="eservices-grid">
+              {categories.map(cat => (
+                <div key={cat._id} className="service-card" onClick={() => handleCategoryClick(cat)}>
+                  <div className="service-image-wrapper">
+                    <img
+                      src={primaryImageUrl(cat.image)}
+                      alt={cat.name}
+                      className="service-image"
+                      data-fallback-idx="0"
+                      onError={(e) => handleImageError(e, cat.image)}
+                    />
+                  </div>
+                  <div className="service-content">
+                    <h3>{cat.name}</h3>
+                    <p className="service-description">{cat.description}</p>
+                    <button className="add-to-cart-btn" onClick={(e) => { e.stopPropagation(); handleCategoryClick(cat); }}>
+                      {t('eservices.openCategory', 'Open')}
+                    </button>
+                  </div>
                 </div>
-                <div className="eservices-grid">
-                  {categoryServices.map(service => (
-                    <div key={service._id} className="service-card">
-                      <div className="service-image-wrapper">
-                        <img
-                          src={primaryImageUrl(service.image)}
-                          alt={service.name}
-                          className="service-image"
-                          data-fallback-idx="0"
-                          onError={(e) => handleImageError(e, service.image)}
-                        />
-                        {service.discount > 0 && (
-                          <div className="discount-badge">-{service.discount}%</div>
+              ))}
+            </div>
+          )}
+
+          {view === 'subcategories' && (
+            <div className="subcategories-panel">
+              <button className="back-btn" onClick={handleBackToCategories}>{t('eservices.backToCategories')}</button>
+              <h2>{selectedCategory?.name}</h2>
+              <div className="eservices-grid">
+                {subCategories.map((sc, idx) => (
+                  <div key={sc._id} className="service-card" onClick={() => handleSubCategoryClick(sc)}>
+                    <div className="service-image-wrapper">
+                      <img
+                        src={primaryImageUrl(sc.image)}
+                        alt={sc.name}
+                        className="service-image"
+                        data-fallback-idx="0"
+                        onError={(e) => handleImageError(e, sc.image)}
+                      />
+                    </div>
+                      <div className="service-content">
+                      {Number(sc.order) > 0 && (
+                        <div className="sub-order-badge">{sc.order}</div>
+                      )}
+                      <h3>{sc.name}</h3>
+                      <p className="service-description">{sc.description}</p>
+                      <button className="add-to-cart-btn" onClick={(e) => { e.stopPropagation(); handleSubCategoryClick(sc); }}>
+                        {t('eservices.openSubCategory', 'Open')}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {view === 'products' && (
+            <div className="products-panel">
+              <div className="products-header">
+                <button className="back-btn" onClick={handleBackToSubCategories}>{t('eservices.backToSubcategories')}</button>
+                <h2>{selectedSubCategory?.name}</h2>
+              </div>
+              <div className="eservices-grid">
+                {services.map(service => (
+                  <div key={service._id} className="service-card">
+                    <div className="service-image-wrapper">
+                      <img
+                        src={primaryImageUrl(service.image)}
+                        alt={service.name}
+                        className="service-image"
+                        data-fallback-idx="0"
+                        onError={(e) => handleImageError(e, service.image)}
+                      />
+                      {service.discount > 0 && (
+                        <div className="discount-badge">-{service.discount}%</div>
+                      )}
+                    </div>
+                    <div className="service-content">
+                      <h3>{service.name}</h3>
+                      <p className="service-description">{service.description}</p>
+                      <div className="service-pricing">
+                        {service.discount > 0 ? (
+                          <>
+                            <span className="original-price">SYP {service.price.toFixed(2)}</span>
+                            <span className="final-price">SYP {service.finalPrice.toFixed(2)}</span>
+                          </>
+                        ) : (
+                          <span className="final-price">SYP {service.price.toFixed(2)}</span>
                         )}
                       </div>
-                      <div className="service-content">
-                        <h3>{service.name}</h3>
-                        <p className="service-description">{service.description}</p>
-                        <div className="service-pricing">
-                          {service.discount > 0 ? (
-                            <>
-                              <span className="original-price">SYP {service.price.toFixed(2)}</span>
-                              <span className="final-price">SYP {service.finalPrice.toFixed(2)}</span>
-                            </>
-                          ) : (
-                            <span className="final-price">SYP {service.price.toFixed(2)}</span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleAddToCart(service)}
-                          className="add-to-cart-btn"
-                        >
-                          {t('eservices.subscribe')}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleAddToCart(service)}
+                        className="add-to-cart-btn"
+                      >
+                        {t('eservices.subscribe')}
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

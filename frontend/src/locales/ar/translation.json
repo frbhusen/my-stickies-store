@@ -32,7 +32,11 @@
     "loading": "جاري تحميل المنتجات...",
     "originalPrice": "السعر الأصلي",
     "finalPrice": "السعر",
-    "viewAll": "عرض كل منتجات القسم"
+    "viewAll": "عرض كل منتجات القسم",
+    "backToCategories": "العودة إلى الأقسام",
+    "backToSubCategories": "العودة إلى الأقسام الفرعية",
+    "openCategory": "فتح",
+    "openSubCategory": "فتح"
   },
   "cart": {
     "title": "عربة التسوق",

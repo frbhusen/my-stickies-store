@@ -31,6 +31,10 @@ const orderSchema = new mongoose.Schema({
         required: true
       },
       productName: String,
+      productDescription: String,
+      categoryName: String,
+      subCategoryName: String,
+      subCategoryDescription: String,
       quantity: {
         type: Number,
         required: true

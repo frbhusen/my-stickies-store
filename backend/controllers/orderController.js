@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const Product = require('../models/Product');
 const { sendOrderEmail, sendOrderConfirmationEmail } = require('../utils/emailService');
 const localWhatsApp = require('../utils/whatsappLocalService');
 
@@ -6,7 +7,35 @@ exports.createOrder = async (req, res) => {
   try {
     // Debug: log incoming request body to help diagnose validation errors
     console.debug('createOrder request body:', JSON.stringify(req.body));
-    const { customer, items, totalAmount, email } = req.body;
+    const { customer, items: rawItems, totalAmount, email } = req.body;
+
+    // Ensure items include productName/description and category/sub-category details
+    const items = await Promise.all((rawItems || []).map(async itm => {
+      const item = { ...itm };
+      try {
+        if (item.product) {
+          const prod = await Product.findById(item.product)
+            .select('name description price category subCategory')
+            .populate('category', 'name')
+            .populate('subCategory', 'name description');
+          if (prod) {
+            item.productName = item.productName || prod.name;
+            item.productDescription = prod.description || item.productDescription || '';
+            item.categoryName = prod.category?.name || item.categoryName || '';
+            item.subCategoryName = prod.subCategory?.name || item.subCategoryName || '';
+            item.subCategoryDescription = prod.subCategory?.description || item.subCategoryDescription || '';
+            // If price not provided, fall back to product price
+            if (!item.price && typeof prod.price !== 'undefined') {
+              item.price = prod.price;
+            }
+          }
+        }
+      } catch (err) {
+        // ignore product lookup failures and proceed with provided data
+        console.warn('Failed to resolve product for order item:', err.message);
+      }
+      return item;
+    }));
 
     const order = new Order({
       customer: {
