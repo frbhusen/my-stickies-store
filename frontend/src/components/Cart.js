@@ -233,7 +233,7 @@ const Cart = () => {
             </div>
             <div className="summary-row">
               <span>{t('cart.shipping')}</span>
-              <span>{t('cart.free')}</span>
+              <span>{calculateTotal() > 650 ? t('cart.free') : 'SYP 100-150'}</span>
             </div>
             <div className="summary-total">
               <span>{t('cart.total')}</span>

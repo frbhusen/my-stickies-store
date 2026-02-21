@@ -1265,10 +1265,6 @@ const AdminDashboard = ({ isAuthenticated }) => {
     </form>
   );
 
-  const topLevelEserviceCategories = categories.filter(
-    (cat) => cat.type === 'eservice'
-  );
-
   return (
     <div className="admin-dashboard">
       <aside className="admin-sidebar">
