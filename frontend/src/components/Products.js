@@ -75,6 +75,10 @@ const Products = () => {
     }
   };
 
+  const blockImageActions = (e) => {
+    e.preventDefault();
+  };
+
   const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/categories', { params: { type: 'product' } });
@@ -231,6 +235,9 @@ const Products = () => {
                       className={`service-image${cat.image ? '' : ' logo-default'}`}
                       data-fallback-idx="0"
                       onError={(e) => handleImageError(e, cat.image)}
+                      onContextMenu={blockImageActions}
+                      onDragStart={blockImageActions}
+                      draggable={false}
                     />
                   </div>
                   <div className="service-content">
@@ -263,6 +270,9 @@ const Products = () => {
                           className={`service-image${product.image ? '' : ' logo-default'}`}
                           data-fallback-idx="0"
                           onError={(e) => handleImageError(e, product.image)}
+                          onContextMenu={blockImageActions}
+                          onDragStart={blockImageActions}
+                          draggable={false}
                         />
                         {product.discount > 0 && <div className="discount-badge">-{product.discount}%</div>}
                       </div>
@@ -297,6 +307,9 @@ const Products = () => {
                         className={`service-image${sc.image ? '' : ' logo-default'}`}
                         data-fallback-idx="0"
                         onError={(e) => handleImageError(e, sc.image)}
+                        onContextMenu={blockImageActions}
+                        onDragStart={blockImageActions}
+                        draggable={false}
                       />
                     </div>
                     <div className="service-content">
@@ -331,6 +344,9 @@ const Products = () => {
                         className="service-image"
                         data-fallback-idx="0"
                         onError={(e) => handleImageError(e, product.image)}
+                        onContextMenu={blockImageActions}
+                        onDragStart={blockImageActions}
+                        draggable={false}
                       />
                       {product.discount > 0 && <div className="discount-badge">-{product.discount}%</div>}
                     </div>
